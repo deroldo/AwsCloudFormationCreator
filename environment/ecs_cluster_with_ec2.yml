@@ -9,88 +9,109 @@ Parameters:
   Environment:
     Type: String
     Description: >
-      Informe um nome do ambiente
+      Environment name
+  #-----------------------
+  Domain:
+    Type: String
+    Description: >
+      Required if - HttpsEnable is true.
+      Domain name with protocol and www
+  #-----------------------
+  OpenSSHTo:
+    Type: String
+    Description: >
+      IP that you want open to SSH access.
+    Default: ''
+  #-----------------------
+  HttpsEnable:
+    Type: String
+    Description: >
+      Enable HTTPS protocol
+    Default: 'false'
+    AllowedValues:
+      - 'false'
+      - 'true'
   #-----------------------
   EcsAmiId:
     Type: String
     Description: >
-      Imagem da instnacia EC2 que vai rodar no cluster.
-      O padrao eh ami-83af8395
+      EC2 image name to run in the ECS cluster.
+      Defaults to ami-83af8395
     Default: ami-83af8395
   #-----------------------
   EcsInstanceType:
     Type: CommaDelimitedList
     Description: >
-      Tipo de instancia que vai rodar no cluster.
-      O padrao eh t2.micro
+      EC2 instance type to run in the ECS cluster.
+      Defaults to t2.micro
     Default: t2.micro
-    ConstraintDescription: Deve ser um tipo EC2 valido.
+    ConstraintDescription: Must be a valid EC2 type.
   #-----------------------
   KeyName:
     Type: String
     Description: >
-      Opcional - Nome da chave PEM que sera usado para fazer acesso SSH.
+      Optional - Key name of PEM to access EC2 instance using SSH.
   #-----------------------
   VpcCidr:
     Type: String
     Description: >
-      Block CIDR da VPC.
-      O padrao eh 10.1.0.0/16
+      CIDR Block of VPC.
+      Defaults to 10.1.0.0/16
     Default: '10.1.0.0/16'
   #-----------------------
   SubnetCidr1:
     Type: String
     Description: >
-      Block CIDR da Subnet 1.
-      O padrao eh 10.1.0.0/24
+      CIDR Block of Subnet 1.
+      Defaults to 10.1.0.0/24
     Default: '10.1.0.0/24'
   #-----------------------
   SubnetCidr2:
     Type: String
     Description: >
-      Block CIDR da Subnet 2.
-      O padrao eh 10.1.1.0/24
+      CIDR Block of Subnet 2.
+      Defaults to 10.1.1.0/24
     Default: '10.1.1.0/24'
   #-----------------------
   SubnetCidr3:
     Type: String
     Description: >
-      Block CIDR da Subnet 3.
-      O padrao eh 10.1.2.0/24
+      CIDR Block of Subnet 3.
+      Defaults to 10.1.2.0/24
     Default: '10.1.2.0/24'
   #-----------------------
   SubnetCidr4:
     Type: String
     Description: >
-      Block CIDR da Subnet 4.
-      O padrao eh 10.1.3.0/24
+      CIDR Block of Subnet 4.
+      Defaults to 10.1.3.0/24
     Default: '10.1.3.0/24'
   #-----------------------
   AsgMaxSize:
     Type: Number
     Description: >
-      Numero maximo de instancias que podem se registrar no cluster.
-      O padrao eh 1.
+      Max of instances that can running on cluster.
+      Defaults to 1.
     Default: '1'
   #-----------------------
   AsgDesiredSize:
     Type: Number
     Description: >
-      Numero de instancias que vai rodar no cluster enquanto nao houver necessidade de escalar.
-      O padrao eh 1.
+      Number of instances that you desire to run when the cluster is not scaled.
+      Defaults to 1.
     Default: '1'
   #-----------------------
   VpcAvailabilityZones:
     Type: CommaDelimitedList
     Description: >
-      Informe duas zonas de disponiblidade da VPC.
-      Os nomes devem ser separados por virgula.
-      O padrao eh us-east-1a,us-east-1d
+      Put two availability zones for VPC.
+      The names must be separated with comma.
+      Defaults to us-east-1a,us-east-1d
     Default: 'us-east-1a,us-east-1d'
   #-----------------------
   EbsVolumeType:
     Type: String
-    Description: Opcional - Tipo do disco das instancias EC2
+    Description: Optional - Type of EC2 valume.
     Default: ''
     AllowedValues:
       - ''
@@ -99,13 +120,13 @@ Parameters:
       - gp2
       - sc1
       - st1
-    ConstraintDescription: Deve ser um tipo valido
+    ConstraintDescription: Must be a valid type.
   #-----------------------
   EbsVolumeSize:
     Type: Number
     Description: >
-      Opcional - Caso tenha informado o tipo de disco, informe também o tamanho para ele.
-      Caso deixe o valor padrao, (0), será criado o disco de tamanho e tipo padrao.
+      Optional - If you put a volume type, you must put a size to him.
+      If the size is 0, the volume type and size will be default.
     Default: '0'
 
 
@@ -119,6 +140,12 @@ Conditions:
   CreateEbsVolume: !And
     - !Not [!Equals [!Ref EbsVolumeSize, '0']]
     - !Not [!Equals [!Ref EbsVolumeType, '']]
+  #-----------------------
+  CreateHTTPSThings:
+    !Equals [!Ref HttpsEnable, 'true']
+  #-----------------------
+  ShouldOpenSSH:
+    !Not [!Equals [!Ref OpenSSHTo, '']]
 
 
 #-----------------------
@@ -198,7 +225,7 @@ Resources:
     Properties:
       VpcId: !Ref Vpc
       CidrBlock: !Ref SubnetCidr2
-      AvailabilityZone: !Select [ 1, !Ref VpcAvailabilityZones ]
+      AvailabilityZone: !Select [ 0, !Ref VpcAvailabilityZones ]
       MapPublicIpOnLaunch: false
   #-----------------------
   PubSubnetAz3:
@@ -206,7 +233,7 @@ Resources:
     Properties:
       VpcId: !Ref Vpc
       CidrBlock: !Ref SubnetCidr3
-      AvailabilityZone: !Select [ 0, !Ref VpcAvailabilityZones ]
+      AvailabilityZone: !Select [ 1, !Ref VpcAvailabilityZones ]
       MapPublicIpOnLaunch: true
   #-----------------------
   PrivSubnetAz4:
@@ -271,9 +298,12 @@ Resources:
       AssociatePublicIpAddress: true
       IamInstanceProfile: !Ref EcsInstanceProfile
       KeyName: !If [ CreateEC2LCWithKeyPair, !Ref KeyName, !Ref "AWS::NoValue" ]
-      SecurityGroups: 
+      SecurityGroups: !If
+        - ShouldOpenSSH
+        -
+          - !Ref SgDefault
+          - !Ref SgSsh
         - !Ref SgDefault
-        - !Ref SgSsh
       BlockDeviceMappings: !If
         - CreateEbsVolume
         -
@@ -327,6 +357,7 @@ Resources:
       VpcId: !Ref Vpc
   #-----------------------
   SgSsh:
+    Condition: ShouldOpenSSH
     Type: "AWS::EC2::SecurityGroup"
     Properties: 
       GroupName: !Join ['-', [!Ref Environment, 'SSH']]
@@ -349,6 +380,7 @@ Resources:
       IpProtocol: "tcp"
       FromPort: "80"
       ToPort: "80"
+      CidrIp: "0.0.0.0/0"
   #-----------------------
   SgHttpsIngress:
     Type: "AWS::EC2::SecurityGroupIngress"
@@ -357,14 +389,98 @@ Resources:
       IpProtocol: "tcp"
       FromPort: "443"
       ToPort: "443"
+      CidrIp: "0.0.0.0/0"
   #-----------------------
   SgSshIngress:
+    Condition: ShouldOpenSSH
     Type: "AWS::EC2::SecurityGroupIngress"
     Properties: 
       GroupId: !Ref SgSsh
       IpProtocol: "tcp"
       FromPort: "22"
       ToPort: "22"
+      CidrIp: !Join ["", [!Ref OpenSSHTo, "/32"]]
+  #-----------------------
+  LoadBalancer:
+    Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+    Properties:
+      Name: !Join ['-', [!Ref Environment, 'ALB']]
+      Scheme: "internet-facing"
+      Subnets:
+        - !Ref PubSubnetAz1
+        - !Ref PubSubnetAz3
+      LoadBalancerAttributes:
+        - Key: "idle_timeout.timeout_seconds"
+          Value: "60"
+      SecurityGroups:
+        - !Ref SgDefault
+        - !Ref SgHttp
+        - !Ref SgHttps
+  #-----------------------
+  HttpListener:
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties:
+      DefaultActions: 
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: "80"
+      Protocol: "HTTP"
+  #-----------------------
+  HttpsListener:
+    Condition: CreateHTTPSThings
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties:
+      DefaultActions: 
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: "443"
+      Protocol: "HTTPS"
+      Certificates:
+        - !Ref CertificateHttp
+  #-----------------------
+  TargetGroup:
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Properties:
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: "/"
+      HealthCheckPort: "80"
+      HealthCheckProtocol: "HTTP"
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 5
+      Matcher:
+        HttpCode: '200'
+      Name: !Join ['-', [!Ref Environment, 'TG']]
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 4
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: '20'
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+  #-----------------------
+  CertificateHttp:
+    Condition: CreateHTTPSThings
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref Domain
+      DomainValidationOptions:
+        - DomainName: !Ref Domain
+          ValidationDomain: !Ref Domain
+  #-----------------------
+  CertificateDistribution:
+    Condition: CreateHTTPSThings
+    Type: 'AWS::CloudFront::Distribution'
+    Properties:
+      DistributionConfig:
+        Aliases: !Ref Domain
+        ViewerCertificate:
+          AcmCertificateArn: !Ref CertificateHttp
+          SslSupportMethod: "sni-only"
 
 #-----------------------
 #-----------------------

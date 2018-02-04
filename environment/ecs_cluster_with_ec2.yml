@@ -174,8 +174,11 @@ Resources:
           Principal:
             Service: "ec2.amazonaws.com"
           Action: "sts:AssumeRole"
+      Path: "/"
       ManagedPolicyArns:
-      - 'arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role'
+        - 'arn:aws:iam::aws:policy/AmazonRDSFullAccess'
+        - 'arn:aws:iam::aws:policy/AmazonSQSFullAccess'
+        - 'arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role'
   #-----------------------
   SSHLocalRolePolicy:
     Type: 'AWS::IAM::Policy'
@@ -303,7 +306,8 @@ Resources:
         -
           - !Ref SgDefault
           - !Ref SgSsh
-        - !Ref SgDefault
+        - 
+          - !Ref SgDefault
       BlockDeviceMappings: !If
         - CreateEbsVolume
         -
@@ -481,6 +485,68 @@ Resources:
         ViewerCertificate:
           AcmCertificateArn: !Ref CertificateHttp
           SslSupportMethod: "sni-only"
+  #-----------------------
+  DBSubnet:
+    Type: "AWS::RDS::DBSubnetGroup"
+    Properties: 
+      DBSubnetGroupDescription: "Subnet to database"
+      SubnetIds:
+        - !Ref PubSubnetAz1
+        - !Ref PrivSubnetAz2
+        - !Ref PubSubnetAz3
+        - !Ref PrivSubnetAz4
+      Tags:
+        - Key: "Name"
+          Value: !Join ['-', [!Ref Environment, 'DB', 'Subnet']]
+  #-----------------------
+  DNSPublico:
+    Type: "AWS::Route53::HostedZone"
+    Properties:
+      HostedZoneConfig:
+        Comment: "Hosted zone publico"
+      Name: !Join ['.', [!Ref Environment, !Ref Domain]]
+      HostedZoneTags:
+        - Key: "Environment"
+          Value: !Ref Environment
+  #-----------------------
+  DNSPrivado:
+    Type: "AWS::Route53::HostedZone"
+    Properties:
+      HostedZoneConfig:
+        Comment: "Hosted zone privado"
+      Name: !Join ['.', [!Ref Environment, 'internal', !Ref Domain]]
+      VPCs: 
+        - VPCId: !Ref Vpc
+          VPCRegion: !Ref "AWS::Region"
+      HostedZoneTags:
+        - Key: "Environment"
+          Value: !Ref Environment
+  #-----------------------
+  DNSRecordAlbPublico:
+    Type: "AWS::Route53::RecordSet"
+    DependsOn: LoadBalancer
+    Properties:
+      HostedZoneId: !Ref DNSPublico
+      Comment: "DNS publico para uso das applications"
+      Name: !Join ['.', ['alb', !Ref Environment, !Ref Domain]]
+      Type: "A"
+      AliasTarget:
+        DNSName: !GetAtt ['LoadBalancer', 'DNSName']
+        EvaluateTargetHealth: false
+        HostedZoneId: !GetAtt ['LoadBalancer', 'CanonicalHostedZoneID']
+  #-----------------------
+  DNSRecordAlbPrivado:
+    Type: "AWS::Route53::RecordSet"
+    DependsOn: LoadBalancer
+    Properties:
+      HostedZoneId: !Ref DNSPrivado
+      Comment: "DNS privado para uso das applications"
+      Name: !Join ['.', ['alb', !Ref Environment, 'internal', !Ref Domain]]
+      Type: "A"
+      AliasTarget:
+        DNSName: !GetAtt ['LoadBalancer', 'DNSName']
+        EvaluateTargetHealth: false
+        HostedZoneId: !GetAtt ['LoadBalancer', 'CanonicalHostedZoneID']
 
 #-----------------------
 #-----------------------
@@ -489,5 +555,5 @@ Outputs:
     Description: Auto Scaling Group Name for ECS Instances
     Value: !Ref EcsInstanceAsg
   TemplateVersion:
-    Description: The version of the template used by Create Cluster Wizard
+    Description: Template version
     Value: '1.0.0'

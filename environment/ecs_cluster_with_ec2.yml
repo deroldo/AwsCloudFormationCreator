@@ -1,0 +1,377 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Criacao de cluster ECS com instancia EC2
+
+#-----------------------
+#-----------------------
+Parameters:
+  #-----------------------
+  Environment:
+    Type: String
+    Description: >
+      Informe um nome do ambiente
+  #-----------------------
+  EcsAmiId:
+    Type: String
+    Description: >
+      Imagem da instnacia EC2 que vai rodar no cluster.
+      O padrao eh ami-83af8395
+    Default: ami-83af8395
+  #-----------------------
+  EcsInstanceType:
+    Type: CommaDelimitedList
+    Description: >
+      Tipo de instancia que vai rodar no cluster.
+      O padrao eh t2.micro
+    Default: t2.micro
+    ConstraintDescription: Deve ser um tipo EC2 valido.
+  #-----------------------
+  KeyName:
+    Type: String
+    Description: >
+      Opcional - Nome da chave PEM que sera usado para fazer acesso SSH.
+  #-----------------------
+  VpcCidr:
+    Type: String
+    Description: >
+      Block CIDR da VPC.
+      O padrao eh 10.1.0.0/16
+    Default: '10.1.0.0/16'
+  #-----------------------
+  SubnetCidr1:
+    Type: String
+    Description: >
+      Block CIDR da Subnet 1.
+      O padrao eh 10.1.0.0/24
+    Default: '10.1.0.0/24'
+  #-----------------------
+  SubnetCidr2:
+    Type: String
+    Description: >
+      Block CIDR da Subnet 2.
+      O padrao eh 10.1.1.0/24
+    Default: '10.1.1.0/24'
+  #-----------------------
+  SubnetCidr3:
+    Type: String
+    Description: >
+      Block CIDR da Subnet 3.
+      O padrao eh 10.1.2.0/24
+    Default: '10.1.2.0/24'
+  #-----------------------
+  SubnetCidr4:
+    Type: String
+    Description: >
+      Block CIDR da Subnet 4.
+      O padrao eh 10.1.3.0/24
+    Default: '10.1.3.0/24'
+  #-----------------------
+  AsgMaxSize:
+    Type: Number
+    Description: >
+      Numero maximo de instancias que podem se registrar no cluster.
+      O padrao eh 1.
+    Default: '1'
+  #-----------------------
+  AsgDesiredSize:
+    Type: Number
+    Description: >
+      Numero de instancias que vai rodar no cluster enquanto nao houver necessidade de escalar.
+      O padrao eh 1.
+    Default: '1'
+  #-----------------------
+  VpcAvailabilityZones:
+    Type: CommaDelimitedList
+    Description: >
+      Informe duas zonas de disponiblidade da VPC.
+      Os nomes devem ser separados por virgula.
+      O padrao eh us-east-1a,us-east-1d
+    Default: 'us-east-1a,us-east-1d'
+  #-----------------------
+  EbsVolumeType:
+    Type: String
+    Description: Opcional - Tipo do disco das instancias EC2
+    Default: ''
+    AllowedValues:
+      - ''
+      - standard
+      - io1
+      - gp2
+      - sc1
+      - st1
+    ConstraintDescription: Deve ser um tipo valido
+  #-----------------------
+  EbsVolumeSize:
+    Type: Number
+    Description: >
+      Opcional - Caso tenha informado o tipo de disco, informe também o tamanho para ele.
+      Caso deixe o valor padrao, (0), será criado o disco de tamanho e tipo padrao.
+    Default: '0'
+
+
+#-----------------------
+#-----------------------
+Conditions:
+  #-----------------------
+  CreateEC2LCWithKeyPair:
+    !Not [!Equals [!Ref KeyName, '']]
+  #-----------------------
+  CreateEbsVolume: !And
+    - !Not [!Equals [!Ref EbsVolumeSize, '0']]
+    - !Not [!Equals [!Ref EbsVolumeType, '']]
+
+
+#-----------------------
+#-----------------------
+Resources:
+  #-----------------------
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      Tags:
+        -
+          Key: "Name"
+          Value: !Join [ "/", [ !Ref Environment, 'VPC' ] ]
+  #-----------------------
+  EcsInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ["-", [!Ref Environment, 'EcsRole']]
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: "Allow"
+          Principal:
+            Service: "ec2.amazonaws.com"
+          Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+      - 'arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role'
+  #-----------------------
+  SSHLocalRolePolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Join ["-", [!Ref Environment, 'EcsPolicy']]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - 'iam:ListUsers'
+          - 'iam:GetGroup'
+          Resource: '*'
+        - Effect: Allow
+          Action:
+          - 'iam:ListSSHPublicKeys'
+          - 'iam:GetSSHPublicKey'
+          Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:user/*'
+        - Effect: Allow
+          Action: 'ec2:DescribeTags'
+          Resource: '*'
+      Roles:
+        - !Ref EcsInstanceRole
+  #-----------------------
+  EcsInstanceProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      InstanceProfileName: !Join ["-", [!Ref Environment, 'EcsProfile']]
+      Roles:
+      - !Ref EcsInstanceRole
+  #-----------------------
+  EcsCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref 'Environment'
+  #-----------------------
+  PubSubnetAz1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref SubnetCidr1
+      AvailabilityZone: !Select [ 0, !Ref VpcAvailabilityZones ]
+      MapPublicIpOnLaunch: true
+  #-----------------------
+  PrivSubnetAz2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref SubnetCidr2
+      AvailabilityZone: !Select [ 1, !Ref VpcAvailabilityZones ]
+      MapPublicIpOnLaunch: false
+  #-----------------------
+  PubSubnetAz3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref SubnetCidr3
+      AvailabilityZone: !Select [ 0, !Ref VpcAvailabilityZones ]
+      MapPublicIpOnLaunch: true
+  #-----------------------
+  PrivSubnetAz4:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref SubnetCidr4
+      AvailabilityZone: !Select [ 1, !Ref VpcAvailabilityZones ]
+      MapPublicIpOnLaunch: false
+  #-----------------------
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+  #-----------------------
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+  #-----------------------
+  RouteViaIgw:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+  #-----------------------
+  PublicRouteViaIgw:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref RouteViaIgw
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  #-----------------------
+  PubSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PubSubnetAz1
+      RouteTableId: !Ref RouteViaIgw
+  #-----------------------
+  PrivSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivSubnetAz2
+      RouteTableId: !Ref RouteViaIgw
+  #-----------------------
+  PubSubnet3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PubSubnetAz3
+      RouteTableId: !Ref RouteViaIgw
+  #-----------------------
+  PrivSubnet4RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivSubnetAz4
+      RouteTableId: !Ref RouteViaIgw
+  #-----------------------
+  EcsInstanceLc:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: !Ref EcsAmiId
+      InstanceType: !Select [ 0, !Ref EcsInstanceType ]
+      AssociatePublicIpAddress: true
+      IamInstanceProfile: !Ref EcsInstanceProfile
+      KeyName: !If [ CreateEC2LCWithKeyPair, !Ref KeyName, !Ref "AWS::NoValue" ]
+      SecurityGroups: 
+        - !Ref SgDefault
+        - !Ref SgSsh
+      BlockDeviceMappings: !If
+        - CreateEbsVolume
+        -
+          - DeviceName: !Join ['-', [!Ref Environment, 'volume']]
+            Ebs:
+             VolumeSize: !Ref EbsVolumeSize
+             VolumeType: !Ref EbsVolumeType
+        - !Ref "AWS::NoValue"
+      UserData: 
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          echo ECS_CLUSTER=${Environment} >> /etc/ecs/ecs.config
+  #-----------------------
+  EcsInstanceAsg:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier: [ !Sub "${PubSubnetAz1}, ${PrivSubnetAz2}, ${PubSubnetAz3}, ${PrivSubnetAz4}" ]
+      LaunchConfigurationName: !Ref EcsInstanceLc
+      MinSize: '0'
+      MaxSize: !Ref AsgMaxSize
+      DesiredCapacity: !Ref AsgDesiredSize
+      Tags:
+        -
+          Key: Name
+          Value: !Join ['-', [!Ref Environment, 'ECS']]
+          PropagateAtLaunch: 'true'
+        -
+          Key: Description
+          Value: "Esta instancia foi criada automaticamente pelo cluster que faz parte"
+          PropagateAtLaunch: 'true'
+  #-----------------------
+  SgDefault:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties: 
+      GroupName: !Join ['-', [!Ref Environment, 'Default']]
+      GroupDescription: "SecurityGroup padrao - abre comunicacao entre as maquinas do cluster"
+      VpcId: !Ref Vpc
+  #-----------------------
+  SgHttp:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties: 
+      GroupName: !Join ['-', [!Ref Environment, 'HTTP']]
+      GroupDescription: "SecurityGroup HTTP - abre a porta 80"
+      VpcId: !Ref Vpc
+  #-----------------------
+  SgHttps:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties: 
+      GroupName: !Join ['-', [!Ref Environment, 'HTTPS']]
+      GroupDescription: "SecurityGroup HTTPS - abre a porta 443"
+      VpcId: !Ref Vpc
+  #-----------------------
+  SgSsh:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties: 
+      GroupName: !Join ['-', [!Ref Environment, 'SSH']]
+      GroupDescription: "SecurityGroup SSH - abre a porta 22"
+      VpcId: !Ref Vpc
+  #-----------------------
+  SgDefaultIngress:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    Properties: 
+      GroupId: !Ref SgDefault
+      IpProtocol: "-1"
+      FromPort: "-1"
+      ToPort: "-1"
+      SourceSecurityGroupId: !Ref SgDefault
+  #-----------------------
+  SgHttpIngress:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    Properties: 
+      GroupId: !Ref SgHttp
+      IpProtocol: "tcp"
+      FromPort: "80"
+      ToPort: "80"
+  #-----------------------
+  SgHttpsIngress:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    Properties: 
+      GroupId: !Ref SgHttps
+      IpProtocol: "tcp"
+      FromPort: "443"
+      ToPort: "443"
+  #-----------------------
+  SgSshIngress:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    Properties: 
+      GroupId: !Ref SgSsh
+      IpProtocol: "tcp"
+      FromPort: "22"
+      ToPort: "22"
+
+#-----------------------
+#-----------------------
+Outputs:
+  EcsInstanceAsgName:
+    Description: Auto Scaling Group Name for ECS Instances
+    Value: !Ref EcsInstanceAsg
+  TemplateVersion:
+    Description: The version of the template used by Create Cluster Wizard
+    Value: '1.0.0'

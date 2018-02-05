@@ -1,0 +1,306 @@
+#-----------------------
+#-----------------------
+Parameters:
+  #-----------------------
+  Environment:
+    Type: String
+    Description: >
+      Environment name
+  #-----------------------
+  ApplicationName:
+    Type: String
+    Description: >
+      Application name
+  #-----------------------
+  ApplicationImage:
+    Type: String
+    Description: >
+      ECR image to this application
+  #-----------------------
+  VpcArn:
+    Type: String
+    Description: >
+      Vpc arn
+  #-----------------------
+  ClusterName:
+    Type: String
+    Description: >
+      Cluster name
+  #-----------------------
+  HttpListenerArn:
+    Type: String
+    Description: >
+      Http listener arn
+  #-----------------------
+  HttpsListenerArn:
+    Type: String
+    Description: >
+      Https listener arn - Required if HttpsEnable is true
+  #-----------------------
+  ListenerPriority:
+    Type: String
+    Description: >
+      Order on http listener - must be different of others applications
+  #-----------------------
+  ListenerPath:
+    Type: String
+    Description: >
+      Application path on http listener
+  #-----------------------
+  HealthCheckPath:
+    Type: String
+    Description: >
+      Application path health check
+  #-----------------------
+  DesiredCount:
+    Type: Number
+    Description: >
+      Number of instances that you desire to run when the cluster is not scaled.
+      Defaults to 1.
+    Default: 1
+  #-----------------------
+  ApiContainerPort:
+    Type: String
+    Description: >
+      Application port.
+      Required if is an application api.
+    Default: ''
+  #-----------------------
+  DBStorage:
+    Type: String
+    Description: >
+      Database storage size in GB.
+      Defaults to 20.
+    Default: '20'
+  #-----------------------
+  DBInstanceType:
+    Type: String
+    Description: >
+      Database instace type.
+      Defaults to db.t2.small.
+    Default: 'db.t2.small'
+  #-----------------------
+  DBParameterGroupName:
+    Type: String
+    Description: >
+      Database parameter group name.
+  #-----------------------
+  MasterUsername:
+    Type: String
+    Description: >
+      The master user to database
+  #-----------------------
+  MasterUserPassword:
+    Type: String
+    Description: >
+      The master password to database
+  #-----------------------
+  DNSPrivado:
+    Type: String
+    Description: >
+      Internal DNS to database
+  #-----------------------
+  Domain:
+    Type: String
+    Description: >
+      Environment domain
+  #-----------------------
+  DBSubnet:
+    Type: String
+    Description: >
+      Database subnet
+  #-----------------------
+  DesiredCount:
+    Type: Number
+    Description: >
+      Number of instances that you desire to run when the cluster is not scaled.
+      Defaults to 1.
+    Default: 1
+  #-----------------------
+  ContainerMemoryReservation:
+    Type: String
+    Description: >
+      Memory reservation to this container on cluster.
+      Defaults to 1.
+    Default: '512'
+  #-----------------------
+  ServiceType:
+    Type: String
+    Description: >
+      Type of application running on cluster.
+    Default: 'api'
+    AllowedValues:
+      - 'api'
+      - 'worker'
+  #-----------------------
+  HttpsEnable:
+    Type: String
+    Description: >
+      Enable HTTPS protocol
+    Default: 'false'
+    AllowedValues:
+      - 'false'
+      - 'true'
+  #-----------------------
+  DBEngine:
+    Type: String
+    Description: >
+      Engine to database
+    Default: 'mysql'
+    AllowedValues:
+      - 'mysql'
+      - 'aurora'
+      - 'postgres'
+  #-----------------------
+  SecurityGroups:
+    Type: CommaDelimitedList
+    Description: >
+      Security Groups separated to comma
+
+
+#-----------------------
+#-----------------------
+Conditions:
+  #-----------------------
+  UseLoadBalancer:
+    !Equals [!Ref ServiceType, 'api']
+  #-----------------------
+  HttpsEnable:
+    !Equals [!Ref HttpsEnable, 'true']
+  #-----------------------
+  CreateHttpsListenerRule: !And
+    - Condition: UseLoadBalancer
+    - Condition: HttpsEnable
+
+
+#-----------------------
+#-----------------------
+Resources:
+  #-----------------------
+  ServiceDefinition:
+    Type: "AWS::ECS::Service"
+    DependsOn: HttpListenerRule
+    Properties: 
+      Cluster: !Ref ClusterName
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 100
+        MaximumPercent: 200
+      DesiredCount: !Ref DesiredCount
+      LoadBalancers: !If 
+        - UseLoadBalancer
+        -
+          - TargetGroupArn: !Ref TargetGroup
+            ContainerPort: !Ref ApiContainerPort
+            ContainerName: !Ref ApplicationName
+        - !Ref "AWS::NoValue"
+      ServiceName: !Ref ApplicationName
+      TaskDefinition: !Ref TaskDefinition
+  #-----------------------
+  TaskDefinition:
+    Type: "AWS::ECS::TaskDefinition"
+    Properties: 
+      Family: !Ref ApplicationName
+      ContainerDefinitions:
+        - Name: !Ref ApplicationName
+          Image: !Ref ApplicationImage
+          MemoryReservation: !Ref ContainerMemoryReservation
+          PortMappings: !If 
+            - UseLoadBalancer
+            - 
+              - HostPort: 0
+                ContainerPort: !Ref ApiContainerPort
+            - !Ref "AWS::NoValue"
+          #Environment:
+  #-----------------------
+  TargetGroup:
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Condition: UseLoadBalancer
+    Properties:
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: !Ref HealthCheckPath
+      HealthCheckProtocol: "HTTP"
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 5
+      Matcher:
+        HttpCode: '200'
+      Name: !Join ['-', [!Ref Environment, !Ref ApplicationName, 'TG']]
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 4
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: '20'
+      VpcId: !Ref VpcArn
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+  #-----------------------
+  HttpListenerRule:
+    Type: "AWS::ElasticLoadBalancingV2::ListenerRule"
+    Condition: UseLoadBalancer
+    Properties:
+      ListenerArn: !Ref HttpListenerArn
+      Priority: !Ref ListenerPriority
+      Conditions:
+        - Field: "path-pattern"
+          Values:
+            - !Ref ListenerPath
+      Actions:
+        - Type: "forward"
+          TargetGroupArn: !Ref TargetGroup
+  #-----------------------
+  HttpsListenerRule:
+    Type: "AWS::ElasticLoadBalancingV2::ListenerRule"
+    Condition: CreateHttpsListenerRule
+    Properties:
+      ListenerArn: !Ref HttpsListenerArn
+      Priority: !Ref ListenerPriority
+      Conditions:
+        - Field: "path-pattern"
+          Values: [!Ref ListenerPath]
+      Actions:
+        - Type: "forward"
+          TargetGroupArn: !Ref TargetGroup
+  #-----------------------
+  DataBase:
+    Type: "AWS::RDS::DBInstance"
+    Properties:
+      AllocatedStorage: !Ref DBStorage
+      AllowMajorVersionUpgrade: false
+      AutoMinorVersionUpgrade: true
+      DBInstanceClass: !Ref DBInstanceType
+      DBInstanceIdentifier: !Join ['-', [!Ref Environment, !Ref ApplicationName]]
+      PubliclyAccessible: true
+      StorageType: "gp2"
+      BackupRetentionPeriod: "7"
+      MasterUsername: !Ref MasterUsername
+      MasterUserPassword: !Ref MasterUserPassword
+      PreferredBackupWindow: "07:17-07:47"
+      PreferredMaintenanceWindow: "sat:03:49-sat:04:19"
+      DBName: !Ref ApplicationName
+      Engine: !Ref DBEngine
+      DBSubnetGroupName: !Ref DBSubnet
+      DBParameterGroupName: !Ref DBParameterGroupName
+      Tags:
+        - Key: "workload-type"
+          Value: "other"
+      VPCSecurityGroups: !Ref SecurityGroups
+  #-----------------------
+  DataBaseDns:
+    Type : "AWS::Route53::RecordSet"
+    Properties:
+      HostedZoneId: !Ref DNSPrivado
+      Comment: "DNS to database"
+      Name: !Join [".", ['database', !Ref ApplicationName, !Ref Environment, 'internal', !Ref Domain]]
+      Type: "CNAME"
+      TTL: "60"
+      ResourceRecords:
+        - !GetAtt ["DataBase", "Endpoint.Address"]
+
+#-----------------------
+#-----------------------
+Outputs:
+  #-----------------------
+  TemplateVersion:
+    Description: Template version
+    Value: '1.0.0'

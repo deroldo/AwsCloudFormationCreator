@@ -12,6 +12,6 @@ PS.: Replace "STACKNAME" and "RESOURCENAME" for the correct value
 
 > How to get a output value from an existing CloudFormation stack:
 
-<code>aws cloudformation describe-stacks --stack-name STACKNAME --query 'Stacks[0].Outputs[?OutputKey==`OUTPUTKEY`].OutputValue' --output text</code>
+<code>aws cloudformation describe-stacks --stack-name STACKNAME --query 'Stacks[0].Outputs[?OutputKey==\`OUTPUTKEY\`].OutputValue' --output text</code>
 
 PS.: Replace "STACKNAME" and "OUTPUTKEY" for the correct value

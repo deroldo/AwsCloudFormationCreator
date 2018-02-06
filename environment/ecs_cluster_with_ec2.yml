@@ -504,7 +504,7 @@ Resources:
     Properties:
       HostedZoneConfig:
         Comment: "Hosted zone publico"
-      Name: !Join ['.', [!Ref Environment, !Ref Domain]]
+      Name: !Ref Domain
       HostedZoneTags:
         - Key: "Environment"
           Value: !Ref Environment
@@ -514,7 +514,7 @@ Resources:
     Properties:
       HostedZoneConfig:
         Comment: "Hosted zone privado"
-      Name: !Join ['.', [!Ref Environment, 'internal', !Ref Domain]]
+      Name: !Join ['.', ['internal', !Ref Domain]]
       VPCs: 
         - VPCId: !Ref Vpc
           VPCRegion: !Ref "AWS::Region"
@@ -528,7 +528,7 @@ Resources:
     Properties:
       HostedZoneId: !Ref DNSPublico
       Comment: "DNS publico para uso das applications"
-      Name: !Join ['.', ['alb', !Ref Environment, !Ref Domain]]
+      Name: !Join ['.', ['alb', !Ref Domain]]
       Type: "A"
       AliasTarget:
         DNSName: !GetAtt ['LoadBalancer', 'DNSName']
@@ -541,7 +541,7 @@ Resources:
     Properties:
       HostedZoneId: !Ref DNSPrivado
       Comment: "DNS privado para uso das applications"
-      Name: !Join ['.', ['alb', !Ref Environment, 'internal', !Ref Domain]]
+      Name: !Join ['.', ['alb', 'internal', !Ref Domain]]
       Type: "A"
       AliasTarget:
         DNSName: !GetAtt ['LoadBalancer', 'DNSName']

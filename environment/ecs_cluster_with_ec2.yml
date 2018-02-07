@@ -40,7 +40,7 @@ Parameters:
     Default: ami-83af8395
   #-----------------------
   EcsInstanceType:
-    Type: CommaDelimitedList
+    Type: String
     Description: >
       EC2 instance type to run in the ECS cluster.
       Defaults to t2.micro
@@ -106,8 +106,8 @@ Parameters:
     Description: >
       Put two availability zones for VPC.
       The names must be separated with comma.
-      Defaults to us-east-1a,us-east-1d
-    Default: 'us-east-1a,us-east-1d'
+      Defaults to us-east-1a,us-east-1c
+    Default: 'us-east-1a,us-east-1c'
   #-----------------------
   EbsVolumeType:
     Type: String
@@ -128,6 +128,13 @@ Parameters:
       Optional - If you put a volume type, you must put a size to him.
       If the size is 0, the volume type and size will be default.
     Default: '0'
+  #-----------------------
+  EmailResourceRecords:
+    Type: CommaDelimitedList
+    Description: >
+      MX resource record list. Each resource must be separated by commam. Sample: 10 my.mxhost.com,20 my-2.mxhost.com
+      Defaults to ''
+    Default: ''
 
 
 #-----------------------
@@ -146,6 +153,9 @@ Conditions:
   #-----------------------
   ShouldOpenSSH:
     !Not [!Equals [!Ref OpenSSHTo, '']]
+  #-----------------------
+  HasMx:
+    !Not [!Equals [!Join ['', !Ref EmailResourceRecords], '']]
 
 
 #-----------------------
@@ -297,7 +307,7 @@ Resources:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
       ImageId: !Ref EcsAmiId
-      InstanceType: !Select [ 0, !Ref EcsInstanceType ]
+      InstanceType: !Ref EcsInstanceType
       AssociatePublicIpAddress: true
       IamInstanceProfile: !Ref EcsInstanceProfile
       KeyName: !If [ CreateEC2LCWithKeyPair, !Ref KeyName, !Ref "AWS::NoValue" ]
@@ -547,6 +557,17 @@ Resources:
         DNSName: !GetAtt ['LoadBalancer', 'DNSName']
         EvaluateTargetHealth: false
         HostedZoneId: !GetAtt ['LoadBalancer', 'CanonicalHostedZoneID']
+  #-----------------------
+  Email:
+    Type: "AWS::Route53::RecordSet"
+    Condition: HasMx
+    Properties:
+      HostedZoneId: !Ref DNSPublico
+      Comment: "Email MX configuration"
+      Name: !Ref Domain
+      Type: "MX"
+      TTL: '900'
+      ResourceRecords: !Ref EmailResourceRecords
   #-----------------------
   MysqlParameterGroup:
     Type: "AWS::RDS::DBParameterGroup"

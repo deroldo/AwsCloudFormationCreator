@@ -1,10 +1,15 @@
 package br.com.deroldo.aws.cloudformation;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 
 public class Main {
@@ -14,28 +19,63 @@ public class Main {
     public static void main(String[] args) {
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
         try {
+
+            final ObjectReader r = mapper.readerFor(Map.class);
+
             String path = Main.class.getClassLoader().getResource("teste.yml").getPath();
-            Map<String, Map> userMap = mapper.readValue(new File(path), Map.class);
+            Map<String, Map> userMap = r.readValue(new File(path));
 
             userMap.keySet().forEach(resourceName -> {
                 String templateName = Main.class.getClassLoader().getResource(resourceName + ".yml").getPath();
                 try {
-                    Map<String, Map> templateMap = mapper.readValue(new File(templateName), Map.class);
 
-                    Arrays.asList(TO_REPLACE).forEach(toReplace -> {
-                        Map<String, Object> userParamMap = userMap.get(resourceName);
-                        userParamMap.keySet().forEach(resourceParamName -> {
-                            replaceMap(resourceParamName, userParamMap.get(resourceParamName), templateMap.get(toReplace), new ArrayList<>(), templateMap.get(toReplace));
-                        });
+                    String[] templateYml = {Files.readAllLines(Paths.get(templateName)).stream()
+                            .reduce((s1, s2) -> s1.concat("\n").concat(s2)).get()};
 
-                        Map<String, Object> templateDefaultParams = templateMap.get("Parameters");
-                        templateDefaultParams.keySet().forEach(templateParamName -> {
-                            Map<String, Map> param = (Map<String, Map>) templateDefaultParams.get(templateParamName);
-                            if (Objects.nonNull(param.get("Default"))){
-                                replaceMap(templateParamName, param.get("Default"), templateMap.get(toReplace), new ArrayList<>(), templateMap.get(toReplace));
-                            }
-                        });
+                    Map<String, Object> toReplace = new HashMap<>();
+
+                    Map<String, Object> userParamMap = userMap.get(resourceName);
+                    userParamMap.keySet().forEach(resourceParamName -> {
+                        if (userParamMap.get(resourceParamName) instanceof List){
+                            final String listValues = ((List<Map>) userParamMap.get(resourceParamName)).stream()
+                                    .map(l -> "- " + l.keySet().iterator().next().toString() + ": " + l.values().iterator()
+                                            .next().toString())
+                                    .reduce((s1, s2) -> s1.concat("\n").concat(s2))
+                                    .get();
+
+                            final String key = UUID.randomUUID().toString();
+                            toReplace.put(key, listValues);
+
+                            templateYml[0] = templateYml[0].replace("Ref: " + resourceParamName, key);
+                        } else {
+                            templateYml[0] = templateYml[0].replace("Ref: " + resourceParamName, userParamMap.get(resourceParamName).toString());
+                        }
                     });
+
+                    Map<String, Map> templateMap = r.readValue(new File(templateName));
+                    Map<String, Object> templateDefaultParams = templateMap.get("Parameters");
+                    templateDefaultParams.keySet().forEach(templateParamName -> {
+                        Map<String, Object> param = (Map<String, Object>) templateDefaultParams.get(templateParamName);
+                        if (Objects.nonNull(param.get("Default"))){
+                            templateYml[0] = templateYml[0].replace("Ref: " + templateParamName, param.get("Default").toString());
+                        }
+                    });
+
+                    toReplace.forEach((k, v) -> {
+                        final int index = templateYml[0].indexOf(k);
+                        final int enterIndex = templateYml[0].substring(0, index).lastIndexOf("\n");
+                        final int diff = templateYml[0].substring(enterIndex, index).replace(" ", "").length();
+                        final int qdtEspaco = index - enterIndex - diff;
+
+                        String espacos = "";
+                        for (int i = 0; i < qdtEspaco; i++){
+                            espacos += " ";
+                        }
+
+                        templateYml[0] = templateYml[0].replace(k, v.toString().replace("\n", "\n" + espacos));
+                    });
+                    templateMap = r.readValue(templateYml[0]);
+//                    templateMap = mapper.readValue(templateYml[0], Map.class);
 
                     templateMap.remove("Parameters");
 

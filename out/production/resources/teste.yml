@@ -8,7 +8,5 @@ ApplicationOnEcs:
   ListenerPriority: 123
   ListenerPath: core
   ContainerEnvironments:
-    - Name: SPRING_PROFILES_ACTIVE
-      Value: staging
-    - Name: DataBasePassword
-      Value: minhaSenha
+    - SPRING_PROFILES_ACTIVE: staging
+    - DataBasePassword: minhaSenha

@@ -1,20 +1,20 @@
 package br.com.deroldo.aws.cloudformation;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectReader;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectReader;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
 public class Main {
-
-    private static final String[] TO_REPLACE = {"Conditions"};
 
     public static void main(String[] args) {
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
@@ -113,45 +113,6 @@ public class Main {
             System.out.println(mapper.writeValueAsString(result));
         } catch (Exception e) {
             e.printStackTrace();
-        }
-    }
-
-    private static void replaceMap(String resourceParamName, Object value, Map template, List<String> breadcrumb, Map root) {
-        template.keySet().forEach(resourceFieldName -> {
-            if (template.get(resourceFieldName) instanceof Map) {
-                breadcrumb.add((String) resourceFieldName);
-                replaceMap(resourceParamName, value, (Map) template.get(resourceFieldName), breadcrumb, root);
-                breadcrumb.remove(breadcrumb.size() - 1);
-            } else if (template.get(resourceFieldName) instanceof List){
-                itera(resourceParamName, value, (List) template.get(resourceFieldName), breadcrumb, root, resourceFieldName);
-            } else {
-                replace(resourceFieldName, template, resourceParamName, value, breadcrumb, root);
-            }
-        });
-    }
-
-    private static void itera(String resourceParamName, Object value, List list, List<String> breadcrumb, Map root, Object resourceFieldName) {
-        for (int i = list.size(); i > 0; i--){
-            if (list.get(i - 1) instanceof Map){
-                replaceMap(resourceParamName, value, (Map) list.get(i - 1), new ArrayList<>(), (Map) list.get(i - 1));
-            } else if (list.get(i - 1) instanceof List){
-                itera(resourceParamName, value, (List) list.get(i - 1), breadcrumb, root, resourceFieldName);
-            }
-        }
-    }
-
-    private static void replace(Object resourceFieldName, Map template, String resourceParamName, Object value, List<String> breadcrumb, Map root) {
-        if (resourceFieldName.equals("Ref") && template.get(resourceFieldName).equals(resourceParamName)){
-            Map map = root;
-            if (breadcrumb.isEmpty()){
-                map.put("kkkkkkkk", value);
-            } else {
-                List<String> strings = breadcrumb.subList(0, breadcrumb.size() - 1);
-                for (String key : strings) {
-                    map = (Map) map.get(key);
-                }
-                map.put(breadcrumb.stream().reduce((s1, s2) -> s2).get(), value);
-            }
         }
     }
 

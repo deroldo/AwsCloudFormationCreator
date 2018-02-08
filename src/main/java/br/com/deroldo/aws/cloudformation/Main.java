@@ -25,6 +25,11 @@ public class Main {
             String path = Main.class.getClassLoader().getResource("teste.yml").getPath();
             Map<String, Map> userMap = r.readValue(new File(path));
 
+            Map<String, Map> result = new HashMap<>();
+            result.put("Resources", new HashMap());
+            result.put("Outputs", new HashMap());
+            result.put("Mappings", new HashMap());
+            int[] aux = {1};
             userMap.keySet().forEach(resourceName -> {
                 String templateName = Main.class.getClassLoader().getResource(resourceName + ".yml").getPath();
                 try {
@@ -75,16 +80,37 @@ public class Main {
                         templateYml[0] = templateYml[0].replace(k, v.toString().replace("\n", "\n" + espacos));
                     });
                     templateMap = r.readValue(templateYml[0]);
-//                    templateMap = mapper.readValue(templateYml[0], Map.class);
 
-                    templateMap.remove("Parameters");
+                    final Map<String, Map> finalTemplateMap = new HashMap<>();
+                    templateMap.get("Resources").forEach((k, v) -> {
+                        finalTemplateMap.put(k.toString()+aux[0], (Map) v);
+                    });
 
-                    System.out.println(mapper.writeValueAsString(templateMap));
+                    result.get("Resources").putAll(finalTemplateMap);
+
+                    if (templateMap.get("Outputs") != null){
+                        result.get("Outputs").putAll(templateMap.get("Outputs"));
+                    }
+                    if (templateMap.get("Mappings") != null){
+                        result.get("Mappings").putAll(templateMap.get("Mappings"));
+                    }
+
+                    aux[0] = aux[0] +1;
 
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             });
+
+            if (result.get("Mappings").isEmpty()){
+                result.remove("Mappings");
+            }
+
+            if (result.get("Outputs").isEmpty()){
+                result.remove("Outputs");
+            }
+
+            System.out.println(mapper.writeValueAsString(result));
         } catch (Exception e) {
             e.printStackTrace();
         }

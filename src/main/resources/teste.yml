@@ -10,3 +10,16 @@ ApplicationOnEcs:
   ContainerEnvironments:
     - SPRING_PROFILES_ACTIVE: staging
     - DataBasePassword: minhaSenha
+
+ApplicationOnEcs:
+  Environment: deroldo
+  ApiContainerPort: 5000
+  ApplicationName: testando...
+  ApplicationImage: docker.image
+  VpcArn: vpc-123
+  HttpListenerArn: httpArn
+  ListenerPriority: 123
+  ListenerPath: core
+  ContainerEnvironments:
+    - SPRING_PROFILES_ACTIVE: staging
+    - DataBasePassword: minhaSenha

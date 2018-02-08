@@ -1,0 +1,14 @@
+ApplicationOnEcs:
+  Environment: deroldo
+  ApiContainerPort: 8080
+  ApplicationName: escolanamao
+  ApplicationImage: docker.image
+  VpcArn: vpc-123
+  HttpListenerArn: httpArn
+  ListenerPriority: 123
+  ListenerPath: core
+  ContainerEnvironments:
+    - Name: SPRING_PROFILES_ACTIVE
+      Value: staging
+    - Name: DataBasePassword
+      Value: minhaSenha

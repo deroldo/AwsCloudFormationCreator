@@ -16,6 +16,9 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
+import org.apache.commons.lang3.NotImplementedException;
+
+import static java.lang.String.format;
 
 public class Test {
 
@@ -63,25 +66,92 @@ public class Test {
                     });
 
             // adding resources with params replaced on aws object
-            template.get("Resources").getAsJsonObject().entrySet().forEach(set -> awsJsonObject.get("Resources").getAsJsonObject().add(set.getKey() + index.get(), set.getValue()));
+            template.get("Resources").getAsJsonObject().entrySet().forEach(set -> {
+                addIndex(set.getKey(), template.getAsJsonObject(), index.get());
+                awsJsonObject.get("Resources").getAsJsonObject().add(set.getKey() + index.get(), set.getValue());
+            });
 
             // adding outputs with params replaced on aws object
             Optional.ofNullable(template.get("Outputs")).ifPresent(outputs -> outputs.getAsJsonObject().entrySet().forEach(set -> {
+                addIndex(set.getKey(), template.getAsJsonObject(), index.get());
                 awsJsonObject.get("Outputs").getAsJsonObject().add(set.getKey() + index.get(), set.getValue());
             }));
 
             // adding mappings with params replaced on aws object
             Optional.ofNullable(template.get("Mappings")).ifPresent(outputs -> outputs.getAsJsonObject().entrySet().forEach(set -> {
+                addIndex(set.getKey(), template.getAsJsonObject(), index.get());
                 awsJsonObject.get("Mappings").getAsJsonObject().add(set.getKey() + index.get(), set.getValue());
             }));
 
             index.incrementAndGet();
         }
 
+        List<String> refs = new ArrayList<>(getAllRefs(awsJsonObject));
+        List<String> nonDeclaredParams = refs.stream()
+                .filter(ref -> !ref.startsWith("AWS::"))
+                .filter(ref -> !awsJsonObject.get("Resources").getAsJsonObject().keySet().contains(ref))
+                .collect(Collectors.toList());
+
+        if (!nonDeclaredParams.isEmpty()){
+            throw new RuntimeException(format("These params %s must be declared, they don't have a default value", nonDeclaredParams.toString()));
+        }
+
         // getting aws yml
         String awsYml = getAwsYml(awsJsonObject);
 
         System.out.println(awsYml);
+    }
+
+    private static void addIndex(String key, JsonObject jsonObject, int index) {
+        jsonObject.entrySet().forEach(set -> {
+            if (set.getKey().equals("Ref") && set.getValue().getAsString().equals(key)){
+                set.setValue(new JsonPrimitive(key + index));
+            } else {
+                if (set.getValue().isJsonObject()){
+                    addIndex(key, set.getValue().getAsJsonObject(), index);
+                } else if (set.getValue().isJsonArray()){
+                    addIndexArray(key, set.getValue().getAsJsonArray(), index);
+                }
+            }
+        });
+    }
+
+    private static void addIndexArray(String key, JsonArray jsonArray, int index) {
+        jsonArray.forEach(element -> {
+            if (element.isJsonObject()){
+                addIndex(key, element.getAsJsonObject(), index);
+            } else if (element.isJsonArray()){
+                addIndexArray(key, element.getAsJsonArray(), index);
+            }
+        });
+    }
+
+    private static Set<String> getAllRefs(JsonObject awsJsonObject) {
+        Set<String> refs = new HashSet<>();
+        awsJsonObject.entrySet().forEach(set -> {
+            if (set.getKey().equals("Ref")){
+                refs.add(set.getValue().getAsString());
+            } else {
+                if (set.getValue().isJsonObject()){
+                    refs.addAll(getAllRefs(set.getValue().getAsJsonObject()));
+                } else if (set.getValue().isJsonArray()){
+                    refs.addAll(getAllRefsFromArray(set.getValue().getAsJsonArray()));
+                }
+            }
+        });
+        return refs;
+    }
+
+    private static Set<String> getAllRefsFromArray(JsonArray asJsonArray) {
+        Set<String> refs = new HashSet<>();
+        asJsonArray.forEach(element -> {
+            if (element.isJsonObject()){
+                refs.addAll(getAllRefs(element.getAsJsonObject()));
+            } else if (element.isJsonArray()){
+                refs.addAll(getAllRefsFromArray(element.getAsJsonArray()));
+            }
+        });
+        return refs;
     }
 
     private static String getAwsYml(JsonObject awsJsonObject) throws IOException {
@@ -129,10 +199,10 @@ public class Test {
             if (father.isJsonArray()){
                 if (grandfather.isJsonArray()){
                     // is a father array and grandfather array
-                    System.out.println("father array and grandfather array");
+                    throw new NotImplementedException("father array and grandfather array");
                 } else {
                     // is a father array and grandfather object
-                    System.out.println("father array and grandfather object");
+                    throw new NotImplementedException("father array and grandfather object");
                 }
             } else {
                 if (grandfather.isJsonArray()){
@@ -172,7 +242,54 @@ public class Test {
                     }
                 }
             }
+        } else if (isArrayValidToReplace(userResourceParamName, userResourceParamValue, templateAttr, templateAttrValue)){
+            JsonElement father = parents.get(parents.size() - 1);
+            JsonElement grandfather = parents.get(parents.size() - 2);
+
+            if (father.isJsonArray()){
+                if (grandfather.isJsonArray()){
+                    // is a father array and grandfather array
+                    throw new NotImplementedException("father array and grandfather array");
+                } else {
+                    // is a father array and grandfather object
+                    throw new NotImplementedException("father array and grandfather object");
+                }
+            } else {
+                if (grandfather.isJsonArray()){
+
+                    JsonArray grandfatherArray = grandfather.getAsJsonArray();
+                    List<JsonElement> elements = StreamSupport.stream(grandfatherArray.spliterator(), false).collect(Collectors.toList());
+                    for (int i = elements.size(); i > 0; i--) {
+                        if (elements.get(i - 1).equals(father)){
+                            grandfatherArray.set(i - 1, userResourceParamValue.getAsJsonArray());
+                        }
+                    }
+
+                } else {
+
+                    String fatherName = grandfather.getAsJsonObject().entrySet().stream()
+                            .filter(set -> set.getValue().equals(father))
+                            .findFirst()
+                            .map(Map.Entry::getKey)
+                            .orElseThrow(RuntimeException::new);
+                    grandfather.getAsJsonObject().remove(fatherName);
+                    grandfather.getAsJsonObject().add(fatherName, userResourceParamValue.getAsJsonArray());
+
+                }
+            }
+
+
+        } else if (isObjectValidToReplace(userResourceParamName, userResourceParamValue, templateAttr, templateAttrValue)){
+            throw new NotImplementedException("User object param");
         }
+    }
+
+    private static boolean isObjectValidToReplace(String userResourceParamName, JsonElement userResourceParamValue, String templateAttr, JsonElement templateAttrValue) {
+        return userResourceParamValue.isJsonObject() && templateAttr.equals("Ref") && templateAttrValue.getAsString().equals(userResourceParamName);
+    }
+
+    private static boolean isArrayValidToReplace(String userResourceParamName, JsonElement userResourceParamValue, String templateAttr, JsonElement templateAttrValue) {
+        return userResourceParamValue.isJsonArray() && templateAttr.equals("Ref") && templateAttrValue.getAsString().equals(userResourceParamName);
     }
 
     private static boolean isFatherInsideArray(JsonElement father, JsonElement grandfather) {
@@ -191,6 +308,7 @@ public class Test {
             parents.add(element);
             element.getAsJsonArray().forEach(subElement -> redirectArrayElement(userResourceParamName, userResourceParamValue, templateAttr, subElement, parents,
                     isNumber));
+            parents.remove(element);
         } else if (element.isJsonObject()){
             // if element inside array is an object, should run each attribute
             replaceParam(userResourceParamName, userResourceParamValue, element.getAsJsonObject(), parents, isNumber);

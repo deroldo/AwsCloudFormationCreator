@@ -50,8 +50,8 @@ Parameters:
     Type: String
   #-----------------------
   ContainerEnvironments:
-    Type: String
-    Default: ''
+    Type: CommaDelimitedList
+    Default: []
   #-----------------------
   HttpsListenerArn:
     Type: String

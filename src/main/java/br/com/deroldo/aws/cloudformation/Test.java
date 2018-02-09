@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -13,8 +12,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 
 public class Test {
 
@@ -35,18 +36,31 @@ public class Test {
         final AtomicInteger index = new AtomicInteger(1);
 
         for (final String userResourceName : json.keySet()) {
-            final JsonObject userResource = json.get(userResourceName).getAsJsonObject();
-            final String templateName = userResource.get("Template").getAsString();
-            final JsonObject template = getJsonObject(templateName);
+            JsonObject userResource = json.get(userResourceName).getAsJsonObject();
+            String templateName = userResource.get("Template").getAsString();
+            JsonObject template = getJsonObject(templateName);
+            JsonObject parameters = template.get("Parameters").getAsJsonObject();
 
             // replace with user params
-            userResource.keySet().forEach(userResourceParamName -> replaceParam(userResourceParamName, userResource.get(userResourceParamName), template, new ArrayList<>()));
+            userResource.keySet().forEach(userResourceParamName -> {
+                boolean isNumber = Optional.ofNullable(parameters.get(userResourceParamName))
+                        .map(JsonElement::getAsJsonObject)
+                        .map(parameter -> parameter.get("Type"))
+                        .map(JsonElement::getAsString)
+                        .map(parameterType -> parameterType.equals("Number"))
+                        .orElse(false);
+                replaceParam(userResourceParamName, userResource.get(userResourceParamName), template, new ArrayList<>(),
+                        isNumber);
+            });
 
             // replace with defaults params
-            JsonObject parameters = template.get("Parameters").getAsJsonObject();
             parameters.getAsJsonObject().keySet().stream()
                     .filter(templateResourceParamName -> Objects.nonNull(parameters.get(templateResourceParamName).getAsJsonObject().get("Default")))
-                    .forEach(templateResourceParamName -> replaceParam(templateResourceParamName, parameters.get(templateResourceParamName).getAsJsonObject().get("Default"), template, new ArrayList<>()));
+                    .forEach(templateResourceParamName -> {
+                        JsonObject parameter = parameters.get(templateResourceParamName).getAsJsonObject();
+                        replaceParam(templateResourceParamName, parameter.get("Default"), template, new ArrayList<>(),
+                                parameter.get("Type").getAsString().equals("Number"));
+                    });
 
             // adding resources with params replaced on aws object
             template.get("Resources").getAsJsonObject().entrySet().forEach(set -> awsJsonObject.get("Resources").getAsJsonObject().add(set.getKey() + index.get(), set.getValue()));
@@ -77,7 +91,7 @@ public class Test {
     }
 
     private static void replaceParam (final String userResourceParamName, final JsonElement userResourceParamValue,
-            final JsonObject template, List<JsonElement> parents) {
+            final JsonObject template, List<JsonElement> parents, final boolean isNumber) {
         parents.add(template);
 
         new HashSet<>(template.keySet()).forEach(templateAttr -> {
@@ -87,16 +101,18 @@ public class Test {
                 // if attribute is an array, should run each node
                 List<JsonElement> elements = StreamSupport.stream(templateAttrValue.getAsJsonArray().spliterator(), false).collect(Collectors.toList());
                 for (int i = elements.size(); i > 0; i--) {
-                    redirectArrayElement(userResourceParamName, userResourceParamValue, templateAttr, elements.get(i - 1), parents);
+                    redirectArrayElement(userResourceParamName, userResourceParamValue, templateAttr, elements.get(i - 1), parents,
+                            isNumber);
                 }
 
             } else if (templateAttrValue.isJsonObject()){
                 // if attribute is an object, should run each sub attribute
-                replaceParam(userResourceParamName, userResourceParamValue, templateAttrValue.getAsJsonObject(), parents);
+                replaceParam(userResourceParamName, userResourceParamValue, templateAttrValue.getAsJsonObject(), parents,
+                        isNumber);
 
             } else {
                 // so, verify if need replace
-                replace(userResourceParamName, userResourceParamValue, templateAttr, templateAttrValue, parents);
+                replace(userResourceParamName, userResourceParamValue, templateAttr, templateAttrValue, parents, isNumber);
             }
         });
 
@@ -104,7 +120,7 @@ public class Test {
     }
 
     private static void replace (final String userResourceParamName, final JsonElement userResourceParamValue,
-            final String templateAttr, final JsonElement templateAttrValue, List<JsonElement> parents) {
+            final String templateAttr, final JsonElement templateAttrValue, List<JsonElement> parents, boolean isNumber) {
 
         if (isPrimitiveValidToReplace(userResourceParamName, userResourceParamValue, templateAttr, templateAttrValue)){
             JsonElement father = parents.get(parents.size() - 1);
@@ -121,7 +137,15 @@ public class Test {
             } else {
                 if (grandfather.isJsonArray()){
                     // is a father object and grandfather array
-                    System.out.println("father object and grandfather array");
+
+                    JsonArray grandfatherArray = grandfather.getAsJsonArray();
+                    List<JsonElement> elements = StreamSupport.stream(grandfatherArray.spliterator(), false).collect(Collectors.toList());
+                    for (int i = elements.size(); i > 0; i--) {
+                        if (elements.get(i - 1).equals(father)){
+                            grandfatherArray.set(i - 1, getJsonPrimitive(userResourceParamValue, isNumber));
+                        }
+                    }
+
                 } else {
                     // is a father object and grandfather object
 
@@ -134,7 +158,7 @@ public class Test {
                                         .anyMatch(e -> e.equals(father)))
                                 .forEach(array -> {
                                     array.remove(father);
-                                    array.add(userResourceParamValue.getAsString());
+                                    array.add(getJsonPrimitive(userResourceParamValue, isNumber));
                                 });
                     } else {
                         // replace value
@@ -144,7 +168,7 @@ public class Test {
                                 .map(Map.Entry::getKey)
                                 .orElseThrow(RuntimeException::new);
                         grandfather.getAsJsonObject().remove(fatherName);
-                        grandfather.getAsJsonObject().addProperty(fatherName, userResourceParamValue.getAsString());
+                        grandfather.getAsJsonObject().add(fatherName, getJsonPrimitive(userResourceParamValue, isNumber));
                     }
                 }
             }
@@ -161,17 +185,18 @@ public class Test {
 
     private static void redirectArrayElement (final String userResourceParamName,
             final JsonElement userResourceParamValue,
-            final String templateAttr, final JsonElement element, List<JsonElement> parents) {
+            final String templateAttr, final JsonElement element, List<JsonElement> parents, final boolean isNumber) {
         if (element.isJsonArray()){
             // if element is another array, should run each node
             parents.add(element);
-            element.getAsJsonArray().forEach(subElement -> redirectArrayElement(userResourceParamName, userResourceParamValue, templateAttr, subElement, parents));
+            element.getAsJsonArray().forEach(subElement -> redirectArrayElement(userResourceParamName, userResourceParamValue, templateAttr, subElement, parents,
+                    isNumber));
         } else if (element.isJsonObject()){
             // if element inside array is an object, should run each attribute
-            replaceParam(userResourceParamName, userResourceParamValue, element.getAsJsonObject(), parents);
+            replaceParam(userResourceParamName, userResourceParamValue, element.getAsJsonObject(), parents, isNumber);
         } else {
             // so, verify if need replace
-            replace(userResourceParamName, userResourceParamValue, templateAttr, element, parents);
+            replace(userResourceParamName, userResourceParamValue, templateAttr, element, parents, isNumber);
         }
     }
 
@@ -179,6 +204,14 @@ public class Test {
             final JsonElement userResourceParamValue, final String templateAttr, final JsonElement templateAttrValue) {
         return userResourceParamValue.isJsonPrimitive() && "Ref".equals(templateAttr)
                 && templateAttrValue.isJsonPrimitive() && templateAttrValue.getAsString().equals(userResourceParamName);
+    }
+
+    private static JsonElement getJsonPrimitive (final JsonElement userResourceParamValue, final boolean isNumber) {
+        if (isNumber) {
+            return new JsonPrimitive(userResourceParamValue.getAsNumber());
+        } else {
+            return new JsonPrimitive(userResourceParamValue.getAsString());
+        }
     }
 
     private static String getPath (final String fileName) {

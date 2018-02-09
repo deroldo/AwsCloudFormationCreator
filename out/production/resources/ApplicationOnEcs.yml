@@ -55,7 +55,7 @@ Parameters:
   #-----------------------
   HttpsListenerArn:
     Type: String
-    Default: "empty"
+    Default: ''
 
 
 #-----------------------
@@ -72,7 +72,7 @@ Conditions:
     Fn::Not:
       - Fn::Equals:
           - Ref: HttpsListenerArn
-          - 'empty'
+          - ''
   #-----------------------
   CreateHttpsListenerRule:
     Fn::And:

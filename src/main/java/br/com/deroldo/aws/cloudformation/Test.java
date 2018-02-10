@@ -18,7 +18,7 @@ import static java.util.Objects.requireNonNull;
 
 public class Test {
 
-    private static final List<String> MAIN_ATTRS = Arrays.asList("Resources", "Outputs", "Mappings");
+    private static final List<String> MAIN_ATTRS = Arrays.asList("Resources", "Outputs", "Mappings", "Conditions");
     private static final ObjectMapper YML_MAPPER = new ObjectMapper(new YAMLFactory());
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
     private static final Gson GSON = new Gson();
@@ -33,7 +33,15 @@ public class Test {
         // aux variable to index resources, outputs and mappings names to always be different
         final AtomicInteger index = new AtomicInteger(1);
 
-        for (final String userResourceName : json.keySet()) {
+        Set<String> globalParams = Optional.ofNullable(json.get("GlobalParameters"))
+                .map(JsonElement::getAsJsonObject)
+                .map(JsonObject::keySet)
+                .orElse(Collections.emptySet());
+
+        Set<String> strings = json.keySet().stream()
+                .filter(key -> !key.equals("GlobalParameters")).collect(Collectors.toSet());
+
+        for (final String userResourceName : strings) {
             JsonObject userResource = json.get(userResourceName).getAsJsonObject();
             String templateName = userResource.get("Template").getAsString();
             JsonObject template = getJsonObject(templateName);
@@ -41,13 +49,15 @@ public class Test {
 
             // replace with user params
             userResource.keySet().forEach(userResourceParamName -> {
-                boolean isNumber = Optional.ofNullable(parameters.get(userResourceParamName))
-                        .map(JsonElement::getAsJsonObject)
-                        .map(parameter -> parameter.get("Type"))
-                        .map(JsonElement::getAsString)
-                        .map(parameterType -> parameterType.equals("Number"))
-                        .orElse(false);
+                boolean isNumber = isNumber(parameters, userResourceParamName);
                 replaceParam(userResourceParamName, userResource.get(userResourceParamName), template, new ArrayList<>(),
+                        isNumber);
+            });
+
+            // replace with user global params
+            globalParams.forEach(userResourceParamName -> {
+                boolean isNumber = isNumber(parameters, userResourceParamName);
+                replaceParam(userResourceParamName, json.get("GlobalParameters").getAsJsonObject().get(userResourceParamName), template, new ArrayList<>(),
                         isNumber);
             });
 
@@ -69,20 +79,32 @@ public class Test {
             index.incrementAndGet();
         }
 
-        List<String> refs = new ArrayList<>(getAllRefs(awsJsonObject));
-        List<String> nonDeclaredParams = refs.stream()
+        Set<String> nonDeclaredParams = getAllRefs(awsJsonObject).stream()
                 .filter(ref -> !ref.startsWith("AWS::"))
                 .filter(ref -> !awsJsonObject.get("Resources").getAsJsonObject().keySet().contains(ref))
-                .collect(Collectors.toList());
+                .collect(Collectors.toSet());
 
         if (!nonDeclaredParams.isEmpty()){
             throw new RuntimeException(format("These params %s must be declared, they don't have a default value", nonDeclaredParams.toString()));
         }
 
+        MAIN_ATTRS.stream()
+                .filter(attr -> awsJsonObject.get(attr).getAsJsonObject().keySet().isEmpty())
+                .forEach(awsJsonObject::remove);
+
         // getting aws yml
         String awsYml = getAwsYml(awsJsonObject);
 
         System.out.println(awsYml);
+    }
+
+    private static boolean isNumber(JsonObject parameters, String userResourceParamName) {
+        return Optional.ofNullable(parameters.get(userResourceParamName))
+                            .map(JsonElement::getAsJsonObject)
+                            .map(parameter -> parameter.get("Type"))
+                            .map(JsonElement::getAsString)
+                            .map(parameterType -> parameterType.equals("Number"))
+                            .orElse(false);
     }
 
     private static void addIndex(String key, JsonObject jsonObject, int index) {
@@ -92,6 +114,16 @@ public class Test {
             } else if (set.getKey().equals("Fn::FindInMap") && set.getValue().isJsonArray()
                     && set.getValue().getAsJsonArray().get(0).getAsString().equals(key)) {
                 set.getValue().getAsJsonArray().set(0, new JsonPrimitive(key + index));
+            } else if (set.getKey().equals("Fn::If") && set.getValue().isJsonArray()
+                    && set.getValue().getAsJsonArray().get(0).getAsString().equals(key)) {
+                set.getValue().getAsJsonArray().set(0, new JsonPrimitive(key + index));
+            } else if (set.getKey().equals("Fn::GetAtt") && set.getValue().isJsonArray()
+                    && set.getValue().getAsJsonArray().get(0).getAsString().equals(key)) {
+                set.getValue().getAsJsonArray().set(0, new JsonPrimitive(key + index));
+            } else if (set.getKey().equals("DependsOn") && set.getValue().getAsString().equals(key)) {
+                set.setValue(new JsonPrimitive(key + index));
+            } else if (set.getKey().equals("Condition") && set.getValue().getAsString().equals(key)) {
+                set.setValue(new JsonPrimitive(key + index));
             } else {
                 if (set.getValue().isJsonObject()){
                     addIndex(key, set.getValue().getAsJsonObject(), index);
@@ -299,7 +331,8 @@ public class Test {
     }
 
     private static String getPath (final String fileName) {
-        return requireNonNull(Main.class.getClassLoader().getResource(fileName + ".yml")).getPath();
+        String name = fileName.replace(".yml", "").replace(".yaml", "");
+        return requireNonNull(Main.class.getClassLoader().getResource(name + ".yml")).getPath();
     }
 
     private static JsonObject getJsonObject (final String fileName) throws IOException {

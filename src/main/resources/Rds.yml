@@ -8,50 +8,20 @@ Parameters:
   ApplicationName:
     Type: String
   #-----------------------
-  ApplicationImage:
-    Type: String
-  #-----------------------
   VpcArn:
     Type: String
-  #-----------------------
-  HttpListenerArn:
-    Type: String
-  #-----------------------
-  HttpsListenerArn:
-    Type: String
-  #-----------------------
-  ListenerPriority:
-    Type: String
-  #-----------------------
-  ListenerPath:
-    Type: String
-  #-----------------------
-  HealthCheckPath:
-    Type: String
-  #-----------------------
-  DesiredCount:
-    Type: Number
-    Default: 1
-  #-----------------------
-  ApiContainerPort:
-    Type: String
-    Default: ''
   #-----------------------
   DBStorageSizeInGb:
     Type: String
     Default: '20'
   #-----------------------
-  DBInstanceType:
-    Type: String
-    Default: 'db.t2.small'
-  #-----------------------
   DBParameterGroupName:
     Type: String
   #-----------------------
-  MasterUsername:
+  DBMasterUsername:
     Type: String
   #-----------------------
-  MasterUserPassword:
+  DBMasterUserPassword:
     Type: String
   #-----------------------
   DNSPrivado:
@@ -63,186 +33,75 @@ Parameters:
   DBSubnet:
     Type: String
   #-----------------------
-  DesiredCount:
-    Type: Number
-    Default: 1
-  #-----------------------
-  DeployMinHealthPercent:
-    Type: Number
-    Default: 50
-  #-----------------------
-  DeployMaxHealthPercent:
-    Type: Number
-    Default: 1
-  #-----------------------
-  ContainerMemoryReservation:
-    Type: String
-    Default: '512'
-  #-----------------------
-  LoadBalanceSubDomain:
-    Type: String
-    Default: 'api'
-  #-----------------------
-  HttpsEnabled:
-    Type: String
-    Default: false
-  #-----------------------
   DBEngine:
     Type: String
     Default: 'mysql'
   #-----------------------
   DBSecurityGroups:
     Type: CommaDelimitedList
-
-
-#-----------------------
-#-----------------------
-Conditions:
   #-----------------------
-  UseLoadBalancer:
-    !Not [!Equals [!Ref LoadBalanceSubDomain, '']]
-  #-----------------------
-  HttpsEnabled:
-    !Equals [!Ref HttpsEnabled, true]
-  #-----------------------
-  CreateDB:
-    !Equals [!Ref HttpsEnabled, true]
-  #-----------------------
-  CreateHttpsListenerRule: !And
-    - Condition: UseLoadBalancer
-    - Condition: HttpsEnabled
+  DBInstanceClass:
+    Type: String
+    Default: 'db.t2.micro'
 
 
 #-----------------------
 #-----------------------
 Resources:
   #-----------------------
-  ServiceDefinition:
-    Type: "AWS::ECS::Service"
-    DependsOn: HttpListenerRule
-    Properties: 
-      Cluster: !Ref Environment
-      DeploymentConfiguration:
-        MinimumHealthyPercent: !Ref DeployMinHealthPercent
-        MaximumPercent: !Ref DeployMaxHealthPercent
-      DesiredCount: !Ref DesiredInstancesCount
-      LoadBalancers: !If 
-        - UseLoadBalancer
-        -
-          - TargetGroupArn: !Ref TargetGroup
-            ContainerPort: !Ref ApiContainerPort
-            ContainerName: !Ref ApplicationName
-        - !Ref "AWS::NoValue"
-      ServiceName: !Ref ApplicationName
-      TaskDefinition: !Ref TaskDefinition
-  #-----------------------
-  TaskDefinition:
-    Type: "AWS::ECS::TaskDefinition"
-    Properties: 
-      Family: !Ref ApplicationName
-      ContainerDefinitions:
-        - Name: !Ref ApplicationName
-          Image: !Ref ApplicationImage
-          MemoryReservation: !Ref ContainerMemoryReservation
-          PortMappings: !If 
-            - UseLoadBalancer
-            - 
-              - HostPort: 0
-                ContainerPort: !Ref ApiContainerPort
-            - !Ref "AWS::NoValue"
-          Environment:
-            - Name: "ENVIRONMENT"
-              Value: "PROD"
-  #-----------------------
-  TargetGroup:
-    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
-    Condition: UseLoadBalancer
-    Properties:
-      HealthCheckIntervalSeconds: 30
-      HealthCheckPath: !Ref HealthCheckPath
-      HealthCheckProtocol: "HTTP"
-      HealthCheckTimeoutSeconds: 5
-      HealthyThresholdCount: 5
-      Matcher:
-        HttpCode: '200'
-      Name: !Join ['-', [!Ref Environment, !Ref ApplicationName, 'TG']]
-      Port: 80
-      Protocol: HTTP
-      UnhealthyThresholdCount: 4
-      TargetGroupAttributes:
-        - Key: deregistration_delay.timeout_seconds
-          Value: '20'
-      VpcId: !Ref VpcArn
-      Tags:
-        - Key: "Environment"
-          Value: !Ref Environment
-  #-----------------------
-  HttpListenerRule:
-    Type: "AWS::ElasticLoadBalancingV2::ListenerRule"
-    Condition: UseLoadBalancer
-    Properties:
-      ListenerArn: !Ref HttpListenerArn
-      Priority: !Ref ListenerPriority
-      Conditions:
-        - Field: "path-pattern"
-          Values:
-            - !Ref ListenerPath
-      Actions:
-        - Type: "forward"
-          TargetGroupArn: !Ref TargetGroup
-  #-----------------------
-  HttpsListenerRule:
-    Type: "AWS::ElasticLoadBalancingV2::ListenerRule"
-    Condition: CreateHttpsListenerRule
-    Properties:
-      ListenerArn: !Ref HttpsListenerArn
-      Priority: !Ref ListenerPriority
-      Conditions:
-        - Field: "path-pattern"
-          Values: [!Ref ListenerPath]
-      Actions:
-        - Type: "forward"
-          TargetGroupArn: !Ref TargetGroup
-  #-----------------------
   DataBase:
     Type: "AWS::RDS::DBInstance"
     Properties:
-      AllocatedStorage: !Ref DBStorageSizeInGb
+      AllocatedStorage:
+        Ref: DBStorageSizeInGb
       AllowMajorVersionUpgrade: false
       AutoMinorVersionUpgrade: true
-      DBInstanceClass: !Ref DBInstanceType
-      DBInstanceIdentifier: !Join ['-', [!Ref Environment, !Ref ApplicationName]]
+      DBInstanceClass:
+        Ref: DBInstanceClass
+      DBInstanceIdentifier:
+        Fn::Join:
+          - '-'
+          - - Ref: Environment
+            - Ref: ApplicationName
       PubliclyAccessible: true
       StorageType: "gp2"
       BackupRetentionPeriod: "7"
-      MasterUsername: !Ref DBMasterUsername
-      MasterUserPassword: !Ref DBMasterUserPassword
+      MasterUsername:
+        Ref: DBMasterUsername
+      MasterUserPassword:
+        Ref: DBMasterUserPassword
       PreferredBackupWindow: "07:17-07:47"
       PreferredMaintenanceWindow: "sat:03:49-sat:04:19"
-      DBName: !Ref ApplicationName
-      Engine: !Ref DBEngine
-      DBSubnetGroupName: !Ref DBSubnet
-      DBParameterGroupName: !Ref DBParameterGroupName
+      DBName:
+        Ref: ApplicationName
+      Engine:
+        Ref: DBEngine
+      DBSubnetGroupName:
+        Ref: DBSubnet
+      DBParameterGroupName:
+        Ref: DBParameterGroupName
       Tags:
         - Key: "workload-type"
           Value: "other"
-      VPCSecurityGroups: !Ref DBSecurityGroups
+      VPCSecurityGroups:
+        Ref: DBSecurityGroups
   #-----------------------
   DataBaseDns:
     Type : "AWS::Route53::RecordSet"
     Properties:
-      HostedZoneId: !Ref DNSPrivado
+      HostedZoneId:
+        Ref: DNSPrivado
       Comment: "DNS to database"
-      Name: !Join [".", ['database', !Ref ApplicationName, 'internal', !Ref Domain]]
+      Name:
+        Fn::Join:
+          - "."
+          - - 'database'
+            - Ref: ApplicationName
+            - 'internal'
+            - Ref: Domain
       Type: "CNAME"
       TTL: "60"
       ResourceRecords:
-        - !GetAtt ["DataBase", "Endpoint.Address"]
-
-#-----------------------
-#-----------------------
-Outputs:
-  #-----------------------
-  TemplateVersion:
-    Description: Template version
-    Value: '1.0.0'
+        - Fn::GetAtt:
+          - "DataBase"
+          - "Endpoint.Address"

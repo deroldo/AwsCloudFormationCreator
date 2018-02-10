@@ -1,5 +1,11 @@
 package br.com.deroldo.aws.cloudformation;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.google.gson.*;
+import org.apache.commons.lang3.NotImplementedException;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
@@ -7,21 +13,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
-import org.apache.commons.lang3.NotImplementedException;
-
 import static java.lang.String.format;
+import static java.util.Objects.requireNonNull;
 
 public class Test {
 
+    private static final List<String> MAIN_ATTRS = Arrays.asList("Resources", "Outputs", "Mappings");
     private static final ObjectMapper YML_MAPPER = new ObjectMapper(new YAMLFactory());
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
     private static final Gson GSON = new Gson();
@@ -31,9 +28,7 @@ public class Test {
 
         // aws object
         JsonObject awsJsonObject = new JsonObject();
-        awsJsonObject.add("Resources", new JsonObject());
-        awsJsonObject.add("Outputs", new JsonObject());
-        awsJsonObject.add("Mappings", new JsonObject());
+        MAIN_ATTRS.forEach(attr -> awsJsonObject.add(attr, new JsonObject()));
 
         // aux variable to index resources, outputs and mappings names to always be different
         final AtomicInteger index = new AtomicInteger(1);
@@ -65,23 +60,11 @@ public class Test {
                                 parameter.get("Type").getAsString().equals("Number"));
                     });
 
-            // adding resources with params replaced on aws object
-            template.get("Resources").getAsJsonObject().entrySet().forEach(set -> {
-                addIndex(set.getKey(), template.getAsJsonObject(), index.get());
-                awsJsonObject.get("Resources").getAsJsonObject().add(set.getKey() + index.get(), set.getValue());
-            });
 
-            // adding outputs with params replaced on aws object
-            Optional.ofNullable(template.get("Outputs")).ifPresent(outputs -> outputs.getAsJsonObject().entrySet().forEach(set -> {
+            MAIN_ATTRS.forEach(attr -> Optional.ofNullable(template.get(attr)).ifPresent(outputs -> outputs.getAsJsonObject().entrySet().forEach(set -> {
                 addIndex(set.getKey(), template.getAsJsonObject(), index.get());
-                awsJsonObject.get("Outputs").getAsJsonObject().add(set.getKey() + index.get(), set.getValue());
-            }));
-
-            // adding mappings with params replaced on aws object
-            Optional.ofNullable(template.get("Mappings")).ifPresent(outputs -> outputs.getAsJsonObject().entrySet().forEach(set -> {
-                addIndex(set.getKey(), template.getAsJsonObject(), index.get());
-                awsJsonObject.get("Mappings").getAsJsonObject().add(set.getKey() + index.get(), set.getValue());
-            }));
+                awsJsonObject.get(attr).getAsJsonObject().add(set.getKey() + index.get(), set.getValue());
+            })));
 
             index.incrementAndGet();
         }
@@ -106,6 +89,9 @@ public class Test {
         jsonObject.entrySet().forEach(set -> {
             if (set.getKey().equals("Ref") && set.getValue().getAsString().equals(key)){
                 set.setValue(new JsonPrimitive(key + index));
+            } else if (set.getKey().equals("Fn::FindInMap") && set.getValue().isJsonArray()
+                    && set.getValue().getAsJsonArray().get(0).getAsString().equals(key)) {
+                set.getValue().getAsJsonArray().set(0, new JsonPrimitive(key + index));
             } else {
                 if (set.getValue().isJsonObject()){
                     addIndex(key, set.getValue().getAsJsonObject(), index);
@@ -232,13 +218,14 @@ public class Test {
                                 });
                     } else {
                         // replace value
-                        String fatherName = grandfather.getAsJsonObject().entrySet().stream()
+                        grandfather.getAsJsonObject().entrySet().stream()
                                 .filter(set -> set.getValue().equals(father))
                                 .findFirst()
                                 .map(Map.Entry::getKey)
-                                .orElseThrow(RuntimeException::new);
-                        grandfather.getAsJsonObject().remove(fatherName);
-                        grandfather.getAsJsonObject().add(fatherName, elementToReplace);
+                                .ifPresent(fatherName -> {
+                                    grandfather.getAsJsonObject().remove(fatherName);
+                                    grandfather.getAsJsonObject().add(fatherName, elementToReplace);
+                                });
                     }
                 }
             }
@@ -253,16 +240,28 @@ public class Test {
             return Optional.of(userResourceParamValue.getAsJsonArray());
         } else if (isObjectValidToReplace(userResourceParamName, userResourceParamValue, templateAttr, templateAttrValue)){
             return Optional.of(userResourceParamValue.getAsJsonObject());
+        } else if (isMapValidToReplace(userResourceParamName, templateAttr, templateAttrValue)){
+            return Optional.of(userResourceParamValue);
         }
         return Optional.empty();
+    }
+
+    private static boolean isPrimitiveValidToReplace (final String userResourceParamName,
+                                                      final JsonElement userResourceParamValue, final String templateAttr, final JsonElement templateAttrValue) {
+        return userResourceParamValue.isJsonPrimitive() && "Ref".equals(templateAttr)
+                && templateAttrValue.isJsonPrimitive() && templateAttrValue.getAsString().equals(userResourceParamName);
+    }
+
+    private static boolean isArrayValidToReplace(String userResourceParamName, JsonElement userResourceParamValue, String templateAttr, JsonElement templateAttrValue) {
+        return userResourceParamValue.isJsonArray() && templateAttr.equals("Ref") && templateAttrValue.getAsString().equals(userResourceParamName);
     }
 
     private static boolean isObjectValidToReplace(String userResourceParamName, JsonElement userResourceParamValue, String templateAttr, JsonElement templateAttrValue) {
         return userResourceParamValue.isJsonObject() && templateAttr.equals("Ref") && templateAttrValue.getAsString().equals(userResourceParamName);
     }
 
-    private static boolean isArrayValidToReplace(String userResourceParamName, JsonElement userResourceParamValue, String templateAttr, JsonElement templateAttrValue) {
-        return userResourceParamValue.isJsonArray() && templateAttr.equals("Ref") && templateAttrValue.getAsString().equals(userResourceParamName);
+    private static boolean isMapValidToReplace(String userResourceParamName, String templateAttr, JsonElement templateAttrValue) {
+        return templateAttr.equals("Fn::FindInMap") && templateAttrValue.getAsString().equals(userResourceParamName);
     }
 
     private static boolean isFatherInsideArray(JsonElement father, JsonElement grandfather) {
@@ -291,12 +290,6 @@ public class Test {
         }
     }
 
-    private static boolean isPrimitiveValidToReplace (final String userResourceParamName,
-            final JsonElement userResourceParamValue, final String templateAttr, final JsonElement templateAttrValue) {
-        return userResourceParamValue.isJsonPrimitive() && "Ref".equals(templateAttr)
-                && templateAttrValue.isJsonPrimitive() && templateAttrValue.getAsString().equals(userResourceParamName);
-    }
-
     private static JsonElement getJsonPrimitive (final JsonElement userResourceParamValue, final boolean isNumber) {
         if (isNumber) {
             return new JsonPrimitive(userResourceParamValue.getAsNumber());
@@ -306,7 +299,7 @@ public class Test {
     }
 
     private static String getPath (final String fileName) {
-        return Main.class.getClassLoader().getResource(fileName + ".yml").getPath();
+        return requireNonNull(Main.class.getClassLoader().getResource(fileName + ".yml")).getPath();
     }
 
     private static JsonObject getJsonObject (final String fileName) throws IOException {

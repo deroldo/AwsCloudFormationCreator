@@ -49,13 +49,19 @@ Parameters:
   ListenerPath:
     Type: String
   #-----------------------
-  ContainerEnvironments:
-    Type: CommaDelimitedList
-    Default: []
-  #-----------------------
   HttpsListenerArn:
     Type: String
     Default: ''
+
+
+#-----------------------
+#-----------------------
+Mappings:
+  ContainerEnvironments:
+    ContainerEnvironments:
+      ContainerEnvironments:
+        - Name: Origin
+          Value: Template Auto Geerated
 
 
 #-----------------------
@@ -132,7 +138,7 @@ Resources:
                     Ref: ApiContainerPort
               - Ref: "AWS::NoValue"
           Environment:
-            Ref: ContainerEnvironments
+            Fn::FindInMap: [ "ContainerEnvironments", "ContainerEnvironments", "ContainerEnvironments"]
   #-----------------------
   TargetGroup:
     Type: "AWS::ElasticLoadBalancingV2::TargetGroup"

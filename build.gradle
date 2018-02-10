@@ -3,7 +3,7 @@ apply plugin: 'application'
 apply plugin: 'eclipse'
 apply plugin: 'idea'
 
-mainClassName = 'br.com.deroldo.aws.cloudformation.Main'
+mainClassName = 'br.com.deroldo.aws.Main'
 
 sourceCompatibility = 1.8
 
@@ -12,21 +12,27 @@ repositories {
     mavenCentral()
 }
 
+ext {
+    jacksonDataformatYamlVersion = '2.9.4'
+    jacksonDatabindVersion = '2.9.4'
+    commonsLang3Version = '3.7'
+    gsonVersion = '2.8.2'
+}
+
 dependencies {
-    compile group: 'com.fasterxml.jackson.dataformat', name: 'jackson-dataformat-yaml', version: '2.9.4'
-    compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.4'
-    compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.7'
-    compile group: 'com.google.code.gson', name: 'gson', version: '2.8.2'
-    compile 'com.jayway.jsonpath:json-path:2.3.0'
+    compile "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${jacksonDataformatYamlVersion}"
+    compile "com.fasterxml.jackson.core:jackson-databind:${jacksonDatabindVersion}"
+    compile "org.apache.commons:commons-lang3:${commonsLang3Version}"
+    compile "com.google.code.gson:gson:${gsonVersion}"
 }
 
 jar {
-    baseName = "aws-cloud-formation-template-creator"
-    version = "1.0.0"
+    baseName = project.name + '-all'
     manifest {
         attributes(
             'Class-Path': configurations.compile.collect { it.getName() }.join(' '),
             'Main-Class': mainClassName
         )
     }
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
 }

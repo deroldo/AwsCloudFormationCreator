@@ -10,29 +10,27 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
-import static java.util.Objects.requireNonNull;
 
 public class InterpreterUserData {
 
-    private static final List<String> MAIN_ATTRS = Arrays.asList("Resources", "Outputs", "Mappings", "Conditions");
+    private static List<String> MAIN_ATTRS = Arrays.asList("Resources", "Outputs", "Mappings", "Conditions");
 
-    private static final ObjectMapper YML_MAPPER = new ObjectMapper(new YAMLFactory());
-    private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
-    private static final Gson GSON = new Gson();
+    private static ObjectMapper YML_MAPPER = new ObjectMapper(new YAMLFactory());
+    private static ObjectMapper JSON_MAPPER = new ObjectMapper();
+    private static Gson GSON = new Gson();
 
-    private static final String GLOBAL_PARAMETERS = "GlobalParameters";
-    private static final String TEMPLATE = "Template";
-    private static final String PARAMETERS = "Parameters";
-    private static final String TYPE = "Type";
-    private static final String NUMBER = "Number";
-    private static final String DEFAULT = "Default";
-    private static final String REF = "Ref";
+    private static String GLOBAL_PARAMETERS = "GlobalParameters";
+    private static String TEMPLATE = "Template";
+    private static String PARAMETERS = "Parameters";
+    private static String TYPE = "Type";
+    private static String NUMBER = "Number";
+    private static String DEFAULT = "Default";
+    private static String REF = "Ref";
 
     private String fileName;
 
@@ -58,7 +56,7 @@ public class InterpreterUserData {
     private void findAndReplace(JsonObject userDataObject, JsonObject awsJsonObject, Set<String> globalParams, String userResourceName) {
         JsonObject userResource = userDataObject.get(userResourceName).getAsJsonObject();
         String templateName = userResource.get(TEMPLATE).getAsString();
-        JsonObject template = getJsonObject(templateName);
+        JsonObject template = getTemplateJsonObject(templateName);
         JsonObject parameters = template.get(PARAMETERS).getAsJsonObject();
 
         findAndReplaceToUserParam(userResource, template, parameters);
@@ -174,20 +172,32 @@ public class InterpreterUserData {
         }
     }
 
-    private static InputStream getInputStream(final String fileName) {
-        String name = fileName.replace(".yml", "").replace(".yaml", "");
-        return InterpreterUserData.class.getClassLoader().getResourceAsStream(name + ".yml");
-    }
-
-    private static JsonObject getJsonObject (final String fileName) {
-        return getJsonObject(fileName, JsonObject.class);
-    }
-
-    private static <T> T getJsonObject (final String fileName, final Class<T> type)  {
+    private static InputStream getInputStream(String fileName, boolean outside) {
         try {
-            JsonNode userData = YML_MAPPER.readValue(getInputStream(fileName), JsonNode.class);
-            final String userDataJson = JSON_MAPPER.writeValueAsString(userData);
-            return GSON.fromJson(userDataJson, type);
+            if (outside){
+                return new FileInputStream(new File(fileName));
+            } else {
+                return InterpreterUserData.class.getClassLoader().getResourceAsStream(fileName);
+            }
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static JsonObject getTemplateJsonObject (String fileName) {
+        String name = fileName.replace(".yml", "").replace(".yaml", "").concat(".yml");
+        return getJsonObject(name, false);
+    }
+
+    private static JsonObject getJsonObject (String fileName)  {
+        return getJsonObject(fileName, true);
+    }
+
+    private static JsonObject getJsonObject (String fileName, boolean outside)  {
+        try {
+            JsonNode userData = YML_MAPPER.readValue(getInputStream(fileName, outside), JsonNode.class);
+            String userDataJson = JSON_MAPPER.writeValueAsString(userData);
+            return GSON.fromJson(userDataJson, JsonObject.class);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

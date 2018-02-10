@@ -9,5 +9,7 @@ MyCluster:
   ListenerPriority: 123
   ListenerPath: core
   ContainerEnvironments:
-    - SPRING_PROFILES_ACTIVE: staging
-    - DataBasePassword: minhaSenha
+    - Name: SPRING_PROFILES_ACTIVE
+      Value: staging
+    - Name: DataBasePassword
+      Value: minhaSenha

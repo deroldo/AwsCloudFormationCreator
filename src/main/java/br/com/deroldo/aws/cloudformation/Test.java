@@ -191,8 +191,8 @@ public class Test {
 
     private static void replace (final String userResourceParamName, final JsonElement userResourceParamValue,
             final String templateAttr, final JsonElement templateAttrValue, List<JsonElement> parents, boolean isNumber) {
-
-        if (isPrimitiveValidToReplace(userResourceParamName, userResourceParamValue, templateAttr, templateAttrValue)){
+        getElementToReplace(userResourceParamName, userResourceParamValue,
+                templateAttr, templateAttrValue, isNumber).ifPresent(elementToReplace -> {
             JsonElement father = parents.get(parents.size() - 1);
             JsonElement grandfather = parents.get(parents.size() - 2);
 
@@ -212,7 +212,7 @@ public class Test {
                     List<JsonElement> elements = StreamSupport.stream(grandfatherArray.spliterator(), false).collect(Collectors.toList());
                     for (int i = elements.size(); i > 0; i--) {
                         if (elements.get(i - 1).equals(father)){
-                            grandfatherArray.set(i - 1, getJsonPrimitive(userResourceParamValue, isNumber));
+                            grandfatherArray.set(i - 1, elementToReplace);
                         }
                     }
 
@@ -228,7 +228,7 @@ public class Test {
                                         .anyMatch(e -> e.equals(father)))
                                 .forEach(array -> {
                                     array.remove(father);
-                                    array.add(getJsonPrimitive(userResourceParamValue, isNumber));
+                                    array.add(elementToReplace);
                                 });
                     } else {
                         // replace value
@@ -238,50 +238,23 @@ public class Test {
                                 .map(Map.Entry::getKey)
                                 .orElseThrow(RuntimeException::new);
                         grandfather.getAsJsonObject().remove(fatherName);
-                        grandfather.getAsJsonObject().add(fatherName, getJsonPrimitive(userResourceParamValue, isNumber));
+                        grandfather.getAsJsonObject().add(fatherName, elementToReplace);
                     }
                 }
             }
+        });
+    }
+
+    private static Optional<JsonElement> getElementToReplace(String userResourceParamName, JsonElement userResourceParamValue,
+                                    String templateAttr, JsonElement templateAttrValue, boolean isNumber){
+        if (isPrimitiveValidToReplace(userResourceParamName, userResourceParamValue, templateAttr, templateAttrValue)){
+            return Optional.of(getJsonPrimitive(userResourceParamValue, isNumber));
         } else if (isArrayValidToReplace(userResourceParamName, userResourceParamValue, templateAttr, templateAttrValue)){
-            JsonElement father = parents.get(parents.size() - 1);
-            JsonElement grandfather = parents.get(parents.size() - 2);
-
-            if (father.isJsonArray()){
-                if (grandfather.isJsonArray()){
-                    // is a father array and grandfather array
-                    throw new NotImplementedException("father array and grandfather array");
-                } else {
-                    // is a father array and grandfather object
-                    throw new NotImplementedException("father array and grandfather object");
-                }
-            } else {
-                if (grandfather.isJsonArray()){
-
-                    JsonArray grandfatherArray = grandfather.getAsJsonArray();
-                    List<JsonElement> elements = StreamSupport.stream(grandfatherArray.spliterator(), false).collect(Collectors.toList());
-                    for (int i = elements.size(); i > 0; i--) {
-                        if (elements.get(i - 1).equals(father)){
-                            grandfatherArray.set(i - 1, userResourceParamValue.getAsJsonArray());
-                        }
-                    }
-
-                } else {
-
-                    String fatherName = grandfather.getAsJsonObject().entrySet().stream()
-                            .filter(set -> set.getValue().equals(father))
-                            .findFirst()
-                            .map(Map.Entry::getKey)
-                            .orElseThrow(RuntimeException::new);
-                    grandfather.getAsJsonObject().remove(fatherName);
-                    grandfather.getAsJsonObject().add(fatherName, userResourceParamValue.getAsJsonArray());
-
-                }
-            }
-
-
+            return Optional.of(userResourceParamValue.getAsJsonArray());
         } else if (isObjectValidToReplace(userResourceParamName, userResourceParamValue, templateAttr, templateAttrValue)){
-            throw new NotImplementedException("User object param");
+            return Optional.of(userResourceParamValue.getAsJsonObject());
         }
+        return Optional.empty();
     }
 
     private static boolean isObjectValidToReplace(String userResourceParamName, JsonElement userResourceParamValue, String templateAttr, JsonElement templateAttrValue) {

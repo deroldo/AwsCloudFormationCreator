@@ -3,7 +3,7 @@ buildscript {
         jcenter()
     }
     dependencies {
-        classpath 'org.kt3k.gradle.plugin:coveralls-gradle-plugin:2.8.2'
+        classpath 'org.kt3k.gradle.plugin:coveralls-gradle-plugin:2.6.3'
     }
 }
 
@@ -59,7 +59,7 @@ jacoco {
 jacocoTestReport {
     reports {
         xml.enabled = true
-        html.enabled = true
+        xml.destination "${buildDir}/reports/jacoco/test/jacocoTestReport.xml"
         html.destination "${buildDir}/jacocoHtml"
     }
 }

@@ -1,8 +1,18 @@
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'org.kt3k.gradle.plugin:coveralls-gradle-plugin:2.8.2'
+    }
+}
+
 apply plugin: 'java'
 apply plugin: 'application'
 apply plugin: 'eclipse'
 apply plugin: 'idea'
 apply plugin: "jacoco"
+apply plugin: 'com.github.kt3k.coveralls'
 
 mainClassName = 'br.com.deroldo.aws.Main'
 
@@ -48,6 +58,8 @@ jacoco {
 
 jacocoTestReport {
     reports {
+        xml.enabled = true
+        html.enabled = true
         html.destination "${buildDir}/jacocoHtml"
     }
 }

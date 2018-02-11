@@ -2,6 +2,7 @@ package br.com.deroldo.aws.cloudformation.userdata;
 
 import br.com.deroldo.aws.cloudformation.find.DataFinder;
 import br.com.deroldo.aws.cloudformation.replace.AttributeIndexAppender;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -10,7 +11,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -32,20 +34,22 @@ public class InterpreterUserData {
     private static String DEFAULT = "Default";
     private static String REF = "Ref";
 
-    private String fileName;
+    private InputStream file;
 
-    public InterpreterUserData(String fileName){
-        this.fileName = fileName;
+    public InterpreterUserData(InputStream file) {
+        this.file = file;
     }
 
-    public String interpretAndGetYml() {
-        JsonObject userDataObject = getJsonObject(this.fileName);
+    public String interpretAndGetYml() throws IOException {
+        JsonObject userDataObject = getJsonObject(this.file);
         JsonObject awsJsonObject = initializeAwsObject();
 
         Set<String> globalParams = getGlobalParameters(userDataObject);
         Set<String> userDataResources = getAllUserResources(userDataObject);
 
-        userDataResources.forEach(userResourceName -> findAndReplace(userDataObject, awsJsonObject, globalParams, userResourceName));
+        for (String userResourceName : userDataResources) {
+            findAndReplace(userDataObject, awsJsonObject, globalParams, userResourceName);
+        }
 
         validateIfThereIsRefNotReplaced(awsJsonObject);
         removeEmptyAttribute(awsJsonObject);
@@ -53,10 +57,10 @@ public class InterpreterUserData {
         return getAwsYml(awsJsonObject);
     }
 
-    private void findAndReplace(JsonObject userDataObject, JsonObject awsJsonObject, Set<String> globalParams, String userResourceName) {
+    private void findAndReplace(JsonObject userDataObject, JsonObject awsJsonObject, Set<String> globalParams, String userResourceName) throws IOException {
         JsonObject userResource = userDataObject.get(userResourceName).getAsJsonObject();
         String templateName = userResource.get(TEMPLATE).getAsString();
-        JsonObject template = getTemplateJsonObject(templateName);
+        JsonObject template = getJsonObject(templateName);
         JsonObject parameters = template.get(PARAMETERS).getAsJsonObject();
 
         findAndReplaceToUserParam(userResource, template, parameters);
@@ -102,21 +106,21 @@ public class InterpreterUserData {
                 .filter(ref -> !awsJsonObject.get("Resources").getAsJsonObject().keySet().contains(ref))
                 .collect(Collectors.toSet());
 
-        if (!nonDeclaredParams.isEmpty()){
+        if (!nonDeclaredParams.isEmpty()) {
             throw new RuntimeException(format("These params %s must be declared, they don't have a default value", nonDeclaredParams.toString()));
         }
     }
 
     private Set<String> getAllUserResources(JsonObject json) {
         return json.keySet().stream()
-                    .filter(key -> !key.equals(GLOBAL_PARAMETERS)).collect(Collectors.toSet());
+                .filter(key -> !key.equals(GLOBAL_PARAMETERS)).collect(Collectors.toSet());
     }
 
     private Set<String> getGlobalParameters(JsonObject json) {
         return Optional.ofNullable(json.get(GLOBAL_PARAMETERS))
-                    .map(JsonElement::getAsJsonObject)
-                    .map(JsonObject::keySet)
-                    .orElse(Collections.emptySet());
+                .map(JsonElement::getAsJsonObject)
+                .map(JsonObject::keySet)
+                .orElse(Collections.emptySet());
     }
 
     private JsonObject initializeAwsObject() {
@@ -137,12 +141,12 @@ public class InterpreterUserData {
     private static Set<String> getAllRefs(JsonObject awsJsonObject) {
         Set<String> refs = new HashSet<>();
         awsJsonObject.entrySet().forEach(set -> {
-            if (set.getKey().equals(REF)){
+            if (set.getKey().equals(REF)) {
                 refs.add(set.getValue().getAsString());
             } else {
-                if (set.getValue().isJsonObject()){
+                if (set.getValue().isJsonObject()) {
                     refs.addAll(getAllRefs(set.getValue().getAsJsonObject()));
-                } else if (set.getValue().isJsonArray()){
+                } else if (set.getValue().isJsonArray()) {
                     refs.addAll(getAllRefsFromArray(set.getValue().getAsJsonArray()));
                 }
             }
@@ -153,54 +157,34 @@ public class InterpreterUserData {
     private static Set<String> getAllRefsFromArray(JsonArray asJsonArray) {
         Set<String> refs = new HashSet<>();
         asJsonArray.forEach(element -> {
-            if (element.isJsonObject()){
+            if (element.isJsonObject()) {
                 refs.addAll(getAllRefs(element.getAsJsonObject()));
-            } else if (element.isJsonArray()){
+            } else if (element.isJsonArray()) {
                 refs.addAll(getAllRefsFromArray(element.getAsJsonArray()));
             }
         });
         return refs;
     }
 
-    private static String getAwsYml(JsonObject awsJsonObject) {
-        try {
-            String awsJson = GSON.toJson(awsJsonObject);
-            JsonNode awsJsonNode = JSON_MAPPER.readValue(awsJson, JsonNode.class);
-            return YML_MAPPER.writeValueAsString(awsJsonNode);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    private static String getAwsYml(JsonObject awsJsonObject) throws IOException {
+        String awsJson = GSON.toJson(awsJsonObject);
+        JsonNode awsJsonNode = JSON_MAPPER.readValue(awsJson, JsonNode.class);
+        return YML_MAPPER.writeValueAsString(awsJsonNode);
     }
 
-    private static InputStream getInputStream(String fileName, boolean outside) {
-        try {
-            if (outside){
-                return new FileInputStream(new File(fileName));
-            } else {
-                return InterpreterUserData.class.getClassLoader().getResourceAsStream(fileName);
-            }
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
-        }
+    private static InputStream getInputStream(String fileName) {
+        return InterpreterUserData.class.getClassLoader().getResourceAsStream(fileName);
     }
 
-    private static JsonObject getTemplateJsonObject (String fileName) {
+    private static JsonObject getJsonObject(String fileName) throws IOException {
         String name = fileName.replace(".yml", "").replace(".yaml", "").concat(".yml");
-        return getJsonObject(name, false);
+        return getJsonObject(getInputStream(name));
     }
 
-    private static JsonObject getJsonObject (String fileName)  {
-        return getJsonObject(fileName, true);
-    }
-
-    private static JsonObject getJsonObject (String fileName, boolean outside)  {
-        try {
-            JsonNode userData = YML_MAPPER.readValue(getInputStream(fileName, outside), JsonNode.class);
-            String userDataJson = JSON_MAPPER.writeValueAsString(userData);
-            return GSON.fromJson(userDataJson, JsonObject.class);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    private static JsonObject getJsonObject(InputStream file) throws IOException {
+        JsonNode userData = YML_MAPPER.readValue(file, JsonNode.class);
+        String userDataJson = JSON_MAPPER.writeValueAsString(userData);
+        return GSON.fromJson(userDataJson, JsonObject.class);
     }
 
 }

@@ -18,11 +18,7 @@ public class ReplaceData {
     }
 
     public void replace(JsonElement father, JsonElement grandfather) {
-        if (father.isJsonArray()){
-            replaceFromFatherArray(father, grandfather);
-        } else {
-            replaceFromFatherObject(father, grandfather);
-        }
+        replaceFromFatherObject(father, grandfather);
     }
 
     private void replaceFromFatherObject(JsonElement father, JsonElement grandfather) {
@@ -63,14 +59,6 @@ public class ReplaceData {
             if (elements.get(i - 1).equals(father)){
                 grandfatherArray.set(i - 1, this.jsonElement);
             }
-        }
-    }
-
-    private void replaceFromFatherArray(JsonElement father, JsonElement grandfather) {
-        if (grandfather.isJsonArray()){
-            throw new NotImplementedException("Father array and grandfather array");
-        } else {
-            throw new NotImplementedException("Father array and grandfather object");
         }
     }
 

@@ -1,0 +1,4 @@
+MyData:
+  Template: ref_resource_ref_case
+  Foo: bar
+  fooMap: foobar

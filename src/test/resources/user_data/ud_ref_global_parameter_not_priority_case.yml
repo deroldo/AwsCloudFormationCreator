@@ -1,0 +1,6 @@
+GlobalParameters:
+  Foo: bar
+
+MyData:
+  Template: ref_simple_case
+  Foo: notbar

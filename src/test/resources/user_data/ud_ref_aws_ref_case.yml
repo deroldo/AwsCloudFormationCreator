@@ -1,0 +1,3 @@
+MyData:
+  Template: ref_aws_ref_case
+  Foo: bar

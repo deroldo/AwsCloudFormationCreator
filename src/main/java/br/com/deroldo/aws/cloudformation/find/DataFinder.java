@@ -25,20 +25,15 @@ public class DataFinder {
             final JsonElement templateAttrValue = template.get(templateAttr);
 
             if (templateAttrValue.isJsonArray()) {
-                // if attribute is an array, should run each node
                 List<JsonElement> elements = StreamSupport.stream(templateAttrValue.getAsJsonArray().spliterator(), false).collect(Collectors.toList());
                 for (int i = elements.size(); i > 0; i--) {
                     redirectArrayElement(userResourceParamName, userResourceParamValue, templateAttr, elements.get(i - 1), parents,
                             isNumber);
                 }
-
             } else if (templateAttrValue.isJsonObject()) {
-                // if attribute is an object, should run each sub attribute
                 findAndReplace(userResourceParamName, userResourceParamValue, templateAttrValue.getAsJsonObject(), parents,
                         isNumber);
-
             } else {
-                // so, verify if need replace
                 replace(userResourceParamName, userResourceParamValue, templateAttr, templateAttrValue, parents, isNumber);
             }
         });

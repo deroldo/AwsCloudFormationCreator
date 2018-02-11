@@ -1,0 +1,5 @@
+MyData:
+  Template: ref_map_case
+  fooMap:
+    - My: Value1
+    - My: Value2

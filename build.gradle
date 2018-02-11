@@ -2,6 +2,7 @@ apply plugin: 'java'
 apply plugin: 'application'
 apply plugin: 'eclipse'
 apply plugin: 'idea'
+apply plugin: "jacoco"
 
 mainClassName = 'br.com.deroldo.aws.Main'
 
@@ -17,6 +18,7 @@ ext {
     jacksonDatabindVersion = '2.9.4'
     commonsLang3Version = '3.7'
     gsonVersion = '2.8.2'
+    junitVersion = '4.12'
 }
 
 dependencies {
@@ -24,6 +26,8 @@ dependencies {
     compile "com.fasterxml.jackson.core:jackson-databind:${jacksonDatabindVersion}"
     compile "org.apache.commons:commons-lang3:${commonsLang3Version}"
     compile "com.google.code.gson:gson:${gsonVersion}"
+
+    testCompile "junit:junit:${junitVersion}"
 }
 
 jar {
@@ -36,3 +40,43 @@ jar {
     }
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
 }
+
+jacoco {
+    toolVersion = "0.7.6.201602180812"
+    reportsDir = file("$buildDir/customJacocoReportDir")
+}
+
+jacocoTestReport {
+    reports {
+        html.destination "${buildDir}/jacocoHtml"
+    }
+}
+
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            element = 'CLASS'
+            limit {
+                counter = 'LINE'
+                minimum = 0.90
+            }
+        }
+        rule {
+            element = 'CLASS'
+            limit {
+                counter = 'BRANCH'
+                minimum = 0.90
+            }
+        }
+        rule {
+            element = 'CLASS'
+            limit {
+                counter = 'METHOD'
+                minimum = 0.90
+            }
+        }
+    }
+}
+
+build.finalizedBy(jacocoTestCoverageVerification)
+jacocoTestCoverageVerification.finalizedBy(jacocoTestReport)

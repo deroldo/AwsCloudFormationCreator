@@ -1,0 +1,58 @@
+#-----------------------
+#-----------------------
+Parameters:
+  #-----------------------
+  Foo:
+    Type: String
+
+
+#-----------------------
+#-----------------------
+Conditions:
+  #-----------------------
+  AnyCondition: true
+
+
+#-----------------------
+#-----------------------
+Mappings:
+  fooMap:
+    fooMap:
+      fooMap:
+        Foo: test
+  anotherMap:
+    anotherMap:
+      anotherMap:
+        Foo: test
+
+
+#-----------------------
+#-----------------------
+Resources:
+  #-----------------------
+  AnyResource:
+    Type: "AnyAwsType"
+    Properties:
+      Foo:
+        Ref: Foo
+  #-----------------------
+  OtherResource:
+    Type: "AnyAwsType"
+    Condition: AnyCondition
+    DependsOn: AnyResource
+    Properties:
+      Foo:
+        Ref: AnyResource
+      Any:
+        Fn::If:
+          - AnyCondition
+          - Ref: Foo
+          - any2
+      Other:
+        Fn::GetAtt:
+          - AnyResource
+          - AnyThing
+      Map:
+        Fn::FindInMap: [ "fooMap", "fooMap", "fooMap"]
+      AnotherMap:
+        Fn::FindInMap: [ "anotherMap", "anotherMap", "anotherMap"]

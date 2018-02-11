@@ -1,0 +1,18 @@
+#-----------------------
+#-----------------------
+Parameters:
+  #-----------------------
+  Foo:
+    Type: String
+    Default: default_bar
+
+
+#-----------------------
+#-----------------------
+Resources:
+  #-----------------------
+  AnyResource:
+    Type: "AnyAwsType"
+    Properties:
+      Foo:
+        Ref: Foo

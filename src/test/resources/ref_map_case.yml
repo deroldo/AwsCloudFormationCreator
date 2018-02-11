@@ -1,0 +1,26 @@
+#-----------------------
+#-----------------------
+Parameters:
+  #-----------------------
+  Foo:
+    Type: String
+
+
+#-----------------------
+#-----------------------
+Mappings:
+  fooMap:
+    fooMap:
+      fooMap:
+        Foo: test
+
+
+#-----------------------
+#-----------------------
+Resources:
+  #-----------------------
+  AnyResource:
+    Type: "AnyAwsType"
+    Properties:
+      Foo:
+        Fn::FindInMap: [ "fooMap", "fooMap", "fooMap"]

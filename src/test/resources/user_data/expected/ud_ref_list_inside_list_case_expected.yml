@@ -1,0 +1,10 @@
+---
+Resources:
+  AnyResource1:
+    Type: "AnyAwsType"
+    Properties:
+      Foo:
+      - - "bar"
+        - Any: "other"
+      - "bar"
+

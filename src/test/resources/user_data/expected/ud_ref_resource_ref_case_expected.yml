@@ -1,0 +1,40 @@
+---
+Resources:
+  AnyResource1:
+    Type: "AnyAwsType"
+    Properties:
+      Foo: "bar"
+  OtherResource1:
+    Type: "AnyAwsType"
+    Condition: "AnyCondition1"
+    DependsOn: "AnyResource1"
+    Properties:
+      Foo:
+        Ref: "AnyResource1"
+      Any:
+        Fn::If:
+        - "AnyCondition1"
+        - "any2"
+        - "bar"
+      Other:
+        Fn::GetAtt:
+        - "AnyResource1"
+        - "AnyThing"
+      AnotherMap:
+        Fn::FindInMap:
+        - "anotherMap1"
+        - "anotherMap"
+        - "anotherMap"
+      Map: "foobar"
+Mappings:
+  fooMap1:
+    fooMap:
+      fooMap:
+        Foo: "test"
+  anotherMap1:
+    anotherMap:
+      anotherMap:
+        Foo: "test"
+Conditions:
+  AnyCondition1: true
+

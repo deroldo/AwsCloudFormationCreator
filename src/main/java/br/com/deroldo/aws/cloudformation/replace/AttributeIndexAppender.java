@@ -24,14 +24,11 @@ public class AttributeIndexAppender {
         jsonObject.entrySet().forEach(set -> {
             if (set.getKey().equals("Ref") && set.getValue().getAsString().equals(key)){
                 set.setValue(new JsonPrimitive(key + index));
-            } else if (set.getKey().equals("Fn::FindInMap") && set.getValue().isJsonArray()
-                    && set.getValue().getAsJsonArray().get(0).getAsString().equals(key)) {
+            } else if (set.getKey().equals("Fn::FindInMap") && set.getValue().getAsJsonArray().get(0).getAsString().equals(key)) {
                 set.getValue().getAsJsonArray().set(0, new JsonPrimitive(key + index));
-            } else if (set.getKey().equals("Fn::If") && set.getValue().isJsonArray()
-                    && set.getValue().getAsJsonArray().get(0).getAsString().equals(key)) {
+            } else if (set.getKey().equals("Fn::If") && set.getValue().getAsJsonArray().get(0).getAsString().equals(key)) {
                 set.getValue().getAsJsonArray().set(0, new JsonPrimitive(key + index));
-            } else if (set.getKey().equals("Fn::GetAtt") && set.getValue().isJsonArray()
-                    && set.getValue().getAsJsonArray().get(0).getAsString().equals(key)) {
+            } else if (set.getKey().equals("Fn::GetAtt") && set.getValue().getAsJsonArray().get(0).getAsString().equals(key)) {
                 set.getValue().getAsJsonArray().set(0, new JsonPrimitive(key + index));
             } else if (set.getKey().equals("DependsOn") && set.getValue().getAsString().equals(key)) {
                 set.setValue(new JsonPrimitive(key + index));

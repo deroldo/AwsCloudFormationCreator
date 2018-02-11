@@ -11,10 +11,6 @@ public class ReplaceDataFactory {
         Optional<JsonElement> element = Optional.empty();
         if (isPrimitiveValidToReplace(userResourceParamName, userResourceParamValue, templateAttr, templateAttrValue)) {
             element = Optional.of(getJsonPrimitive(userResourceParamValue, isNumber));
-        } else if (isArrayValidToReplace(userResourceParamName, userResourceParamValue, templateAttr, templateAttrValue)) {
-            element = Optional.of(userResourceParamValue.getAsJsonArray());
-        } else if (isObjectValidToReplace(userResourceParamName, userResourceParamValue, templateAttr, templateAttrValue)) {
-            element = Optional.of(userResourceParamValue.getAsJsonObject());
         } else if (isMapValidToReplace(userResourceParamName, templateAttr, templateAttrValue)) {
             element = Optional.of(userResourceParamValue);
         }
@@ -22,16 +18,7 @@ public class ReplaceDataFactory {
     }
 
     private static boolean isPrimitiveValidToReplace(String userResourceParamName, JsonElement userResourceParamValue, String templateAttr, JsonElement templateAttrValue) {
-        return userResourceParamValue.isJsonPrimitive() && "Ref".equals(templateAttr)
-                && templateAttrValue.isJsonPrimitive() && templateAttrValue.getAsString().equals(userResourceParamName);
-    }
-
-    private static boolean isArrayValidToReplace(String userResourceParamName, JsonElement userResourceParamValue, String templateAttr, JsonElement templateAttrValue) {
-        return userResourceParamValue.isJsonArray() && templateAttr.equals("Ref") && templateAttrValue.getAsString().equals(userResourceParamName);
-    }
-
-    private static boolean isObjectValidToReplace(String userResourceParamName, JsonElement userResourceParamValue, String templateAttr, JsonElement templateAttrValue) {
-        return userResourceParamValue.isJsonObject() && templateAttr.equals("Ref") && templateAttrValue.getAsString().equals(userResourceParamName);
+        return userResourceParamValue.isJsonPrimitive() && "Ref".equals(templateAttr) && templateAttrValue.getAsString().equals(userResourceParamName);
     }
 
     private static boolean isMapValidToReplace(String userResourceParamName, String templateAttr, JsonElement templateAttrValue) {

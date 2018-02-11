@@ -1,0 +1,13 @@
+---
+Resources:
+  AnyResource1:
+    Type: "AnyAwsType"
+    Properties:
+      Foo:
+        My: "Value"
+Mappings:
+  fooMap1:
+    fooMap:
+      fooMap:
+        Foo: "test"
+

@@ -8,6 +8,7 @@ import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.cloudformation.AmazonCloudFormation;
 import com.amazonaws.services.cloudformation.AmazonCloudFormationClientBuilder;
+import com.amazonaws.services.cloudformation.model.AmazonCloudFormationException;
 import com.amazonaws.services.cloudformation.model.DescribeStacksResult;
 import com.amazonaws.services.cloudformation.model.Stack;
 import com.amazonaws.services.cloudformation.model.StackStatus;
@@ -103,6 +104,27 @@ public class CloudFormationPublisherTest {
         DescribeStacksResult describeResult = mock(DescribeStacksResult.class);
         when(describeResult.getStacks())
                 .thenReturn(new ArrayList<>())
+                .thenReturn(singletonList(stack));
+
+        doReturn(describeResult).when(this.cloudFormation).describeStacks(any());
+
+        this.publisher.publish(AWS_YML);
+
+        verify(stack, times(3)).getStackStatus();
+        verify(this.cloudFormation).createStack(any());
+        verify(this.cloudFormation, never()).updateStack(any());
+    }
+
+    @Test
+    public void publish_create_stack_when_aws_throws_exception_on_stack_consult() throws Exception {
+        Stack stack = mock(Stack.class);
+        when(stack.getStackStatus())
+                .thenReturn(StackStatus.CREATE_IN_PROGRESS.name())
+                .thenReturn(StackStatus.CREATE_COMPLETE.name());
+
+        DescribeStacksResult describeResult = mock(DescribeStacksResult.class);
+        when(describeResult.getStacks())
+                .thenThrow(AmazonCloudFormationException.class)
                 .thenReturn(singletonList(stack));
 
         doReturn(describeResult).when(this.cloudFormation).describeStacks(any());

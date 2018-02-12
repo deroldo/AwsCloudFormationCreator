@@ -17,6 +17,7 @@ import java.util.Optional;
 
 import br.com.deroldo.aws.cloudformation.publish.CloudFormationPublisher;
 import br.com.deroldo.aws.cloudformation.userdata.InterpreterUserData;
+import org.apache.commons.lang3.StringUtils;
 
 public class CloudFormationExecutor {
 
@@ -26,7 +27,8 @@ public class CloudFormationExecutor {
             throw new RuntimeException("Required param USER_DATA is missing");
         }
         Optional<String> awsPublish = Optional.ofNullable(System.getProperty("AWS_PUBLISH"));
-        Optional<String> awsFile = Optional.ofNullable(System.getProperty("AWS_FILE"));
+        Optional<String> awsFile = Optional.ofNullable(System.getProperty("AWS_FILE"))
+                .map(awsFilePath -> isEmpty(awsFilePath) ? null : awsFilePath);
         String awsYml = new InterpreterUserData(getInputStream(userData)).interpretAndGetYml();
 
         if (awsPublish.isPresent() && valueOf(awsPublish.get())){

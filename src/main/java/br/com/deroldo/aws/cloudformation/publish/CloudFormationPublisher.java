@@ -7,10 +7,7 @@ import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.cloudformation.AmazonCloudFormation;
 import com.amazonaws.services.cloudformation.AmazonCloudFormationClientBuilder;
-import com.amazonaws.services.cloudformation.model.CreateStackRequest;
-import com.amazonaws.services.cloudformation.model.DescribeStacksRequest;
-import com.amazonaws.services.cloudformation.model.Stack;
-import com.amazonaws.services.cloudformation.model.UpdateStackRequest;
+import com.amazonaws.services.cloudformation.model.*;
 
 import java.util.List;
 import java.util.Optional;
@@ -83,10 +80,14 @@ public class CloudFormationPublisher {
 
     private void uploadAwsYml (final String awsYml, final AmazonCloudFormation cloudFormation, final String stackName,
             final DescribeStacksRequest describer) {
-        boolean stackAlreadyExists = !cloudFormation.describeStacks(describer).getStacks().isEmpty();
-        if (stackAlreadyExists){
-            updateStack(awsYml, cloudFormation, stackName);
-        } else {
+        try {
+            boolean stackAlreadyExists = !cloudFormation.describeStacks(describer).getStacks().isEmpty();
+            if (stackAlreadyExists){
+                updateStack(awsYml, cloudFormation, stackName);
+            } else {
+                createStack(awsYml, cloudFormation, stackName);
+            }
+        } catch (AmazonCloudFormationException e){
             createStack(awsYml, cloudFormation, stackName);
         }
     }

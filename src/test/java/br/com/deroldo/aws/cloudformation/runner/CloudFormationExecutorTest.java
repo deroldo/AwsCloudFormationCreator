@@ -1,14 +1,9 @@
 package br.com.deroldo.aws.cloudformation.runner;
 
-import static java.util.Collections.singleton;
-import static java.util.Objects.requireNonNull;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
+import br.com.deroldo.aws.MainTest;
+import br.com.deroldo.aws.cloudformation.publish.CloudFormationPublisher;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.FileNotFoundException;
 import java.nio.file.Files;
@@ -16,10 +11,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.UUID;
 
-import br.com.deroldo.aws.MainTest;
-import br.com.deroldo.aws.cloudformation.publish.CloudFormationPublisher;
-import org.junit.Before;
-import org.junit.Test;
+import static java.util.Collections.singleton;
+import static java.util.Objects.requireNonNull;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 public class CloudFormationExecutorTest {
 
@@ -39,6 +37,14 @@ public class CloudFormationExecutorTest {
     public void main_should_execute() throws Exception {
         String userData = requireNonNull(MainTest.class.getClassLoader().getResource("user_data/ud_ref_simple_case.yml")).getPath();
         System.setProperty("USER_DATA", userData);
+        CloudFormationExecutor.execute(null);
+    }
+
+    @Test
+    public void main_should_execute_and_not_write_file_when_aws_file_is_empty() throws Exception {
+        String userData = requireNonNull(MainTest.class.getClassLoader().getResource("user_data/ud_ref_simple_case.yml")).getPath();
+        System.setProperty("USER_DATA", userData);
+        System.setProperty("AWS_FILE", "");
         CloudFormationExecutor.execute(null);
     }
 

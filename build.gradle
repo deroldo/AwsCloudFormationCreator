@@ -29,6 +29,8 @@ ext {
     commonsLang3Version = '3.7'
     gsonVersion = '2.8.2'
     junitVersion = '4.12'
+    mockitoVersion = '2.15.0'
+    javaSdkCloudformationVersion = '1.11.275'
 }
 
 dependencies {
@@ -36,8 +38,11 @@ dependencies {
     compile "com.fasterxml.jackson.core:jackson-databind:${jacksonDatabindVersion}"
     compile "org.apache.commons:commons-lang3:${commonsLang3Version}"
     compile "com.google.code.gson:gson:${gsonVersion}"
+    compile "com.amazonaws:aws-java-sdk-cloudformation:${javaSdkCloudformationVersion}"
 
     testCompile "junit:junit:${junitVersion}"
+    testCompile "org.mockito:mockito-core:${mockitoVersion}"
+
 }
 
 jar {

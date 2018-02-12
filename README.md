@@ -5,11 +5,42 @@
 
 Templates to create environments and applications easier with CloudFormation on AWS
 
+## Summary
+<ul>
+    <li>
+        <a href='#usage-without-docker'>Usage without Docker</a>
+        <ul>
+            <li>
+                <a href='#'>Build</a>
+            </li>
+            <li>
+                <a href='#'>Then use</a>
+            </li>
+        </ul>
+    </li>
+    <li>
+        <a href='#usage-with-docker'>Usage with Docker</a>
+    </li>
+    <li>
+        <a href='#tips'>Tips</a>
+        <ul>
+            <li>
+                <a href='#get-a-resource-id-from-cloudformation-stack'>Get a resource id from CloudFormation stack</a>
+            </li>
+            <li>
+                <a href='#get-a-output-from-cloudformation-stack'>Get a output from CloudFormation stack</a>
+            </li>
+        </ul>
+    </li>
+</ul>
+
 ## Usage without Docker
 
 ##### Build
 ```bash
-./gradlew clean build 
+git clone https://github.com/deroldo/AwsCloudFormationCreator.git \
+    && cd AwsCloudFormationCreator \
+    && ./gradlew clean build 
 ```
 
 ##### Then
@@ -75,7 +106,7 @@ docker run \
 
 ## Tips
 
-> How to get a resource id from an existing CloudFormation stack:
+##### Get a resource id from CloudFormation stack:
 ```bash
 aws cloudformation describe-stack-resources \
     --stack-name STACK_NAME \
@@ -87,7 +118,7 @@ aws cloudformation describe-stack-resources \
 PS.: Replace "STACK_NAME" and "RESOURCE_ID" for the correct value
 </small>
 
-> How to get a output value from an existing CloudFormation stack:
+##### Get a output from CloudFormation stack:
 ```bash
 aws cloudformation describe-stacks \
     --stack-name STACK_NAME \

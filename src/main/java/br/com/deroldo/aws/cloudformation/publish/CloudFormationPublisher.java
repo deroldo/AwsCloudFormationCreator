@@ -1,21 +1,9 @@
 package br.com.deroldo.aws.cloudformation.publish;
 
-import static com.amazonaws.services.cloudformation.model.StackStatus.CREATE_COMPLETE;
-import static com.amazonaws.services.cloudformation.model.StackStatus.CREATE_FAILED;
-import static com.amazonaws.services.cloudformation.model.StackStatus.DELETE_FAILED;
-import static com.amazonaws.services.cloudformation.model.StackStatus.ROLLBACK_COMPLETE;
-import static com.amazonaws.services.cloudformation.model.StackStatus.ROLLBACK_FAILED;
-import static com.amazonaws.services.cloudformation.model.StackStatus.UPDATE_COMPLETE;
-import static java.lang.String.format;
-import static java.lang.System.out;
-
-import java.util.List;
-import java.util.Optional;
-
 import br.com.deroldo.aws.cloudformation.exception.AwsStatusFailException;
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.AmazonServiceException;
-import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
+import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.cloudformation.AmazonCloudFormation;
 import com.amazonaws.services.cloudformation.AmazonCloudFormationClientBuilder;
@@ -23,6 +11,12 @@ import com.amazonaws.services.cloudformation.model.CreateStackRequest;
 import com.amazonaws.services.cloudformation.model.DescribeStacksRequest;
 import com.amazonaws.services.cloudformation.model.Stack;
 import com.amazonaws.services.cloudformation.model.UpdateStackRequest;
+
+import java.util.List;
+import java.util.Optional;
+
+import static com.amazonaws.services.cloudformation.model.StackStatus.*;
+import static java.lang.System.out;
 
 /**
  * Copied and adapted from:
@@ -33,15 +27,16 @@ public class CloudFormationPublisher {
     private static final int DELAY = 10000;
 
     private AmazonCloudFormationClientBuilder stackBuilder;
+    private AWSCredentialsProvider credentialsProvider;
 
-    public CloudFormationPublisher(AmazonCloudFormationClientBuilder stackBuilder){
+    public CloudFormationPublisher(AmazonCloudFormationClientBuilder stackBuilder, AWSCredentialsProvider credentialsProvider){
         this.stackBuilder = stackBuilder;
+        this.credentialsProvider = credentialsProvider;
     }
 
     public void publish(String awsYml) throws Exception {
-        DefaultAWSCredentialsProviderChain credentialsProvider = new DefaultAWSCredentialsProviderChain();
         try {
-            credentialsProvider.getCredentials();
+            this.credentialsProvider.getCredentials();
         } catch (Exception e) {
             throw new AmazonClientException("AWS credentials not found. See more: https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/DefaultAWSCredentialsProviderChain.html", e);
         }
@@ -50,7 +45,7 @@ public class CloudFormationPublisher {
                 .map(Regions::fromName)
                 .orElseThrow(() -> new RuntimeException("The AWS_REGION must be provided"));
 
-        AmazonCloudFormation cloudFormation = this.stackBuilder.withCredentials(credentialsProvider)
+        AmazonCloudFormation cloudFormation = this.stackBuilder.withCredentials(this.credentialsProvider)
                 .withRegion(region)
                 .build();
 

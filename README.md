@@ -5,6 +5,44 @@
 
 ## Templates to create environments and applications with CloudFormation on AWS
 
+### Usage
+
+##### Build
+```bash
+./gradlew clean build 
+```
+
+##### Then
+> Basic:
+```bash
+java -jar \
+    -DUSER_DATA=/my_full_path/file.yml \
+    build/libs/AwsCloudFormationCreator.jar > ~/aws_data.yml
+```
+
+> To file:
+```bash
+java -jar \
+    -DUSER_DATA=/my_full_path/file.yml \
+    -DAWS_FILE=/destination_full_path/file_name.yml \
+    build/libs/AwsCloudFormationCreator.jar 
+```
+
+> AWS publish:
+```bash
+java -jar \
+    -DUSER_DATA=/my_full_path/file.yml \
+    -DAWS_PUBLISH=/true \
+    -DSTACK_NAME=my-stack-name \
+    -DAWS_REGION=us-east-1 \
+    build/libs/AwsCloudFormationCreator.jar 
+```
+<small>
+PS: To know about AWS authentication <a href='https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/DefaultAWSCredentialsProviderChain.html' target='_blank'>click here</a>
+</small>
+
+### Tips
+
 > How to get a resource id from an existing CloudFormation stack:
 ```bash
 aws cloudformation describe-stack-resources --stack-name STACK_NAME --logical-resource-id RESOURCE_ID --query "(StackResources[].PhysicalResourceId)[0]"

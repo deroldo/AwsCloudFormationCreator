@@ -43,7 +43,7 @@ public class CloudFormationPublisher {
         try {
             credentialsProvider.getCredentials();
         } catch (Exception e) {
-            throw new AmazonClientException("AWS credentials not found. See more: com.amazonaws.auth.DefaultAWSCredentialsProviderChain", e);
+            throw new AmazonClientException("AWS credentials not found. See more: https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/DefaultAWSCredentialsProviderChain.html", e);
         }
 
         Regions region = Optional.ofNullable(System.getProperty("AWS_REGION"))

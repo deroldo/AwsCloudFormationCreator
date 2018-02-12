@@ -11,10 +11,10 @@ Templates to create environments and applications easier with CloudFormation on 
         <a href='#usage-without-docker'>Usage without Docker</a>
         <ul>
             <li>
-                <a href='#'>Build</a>
+                <a href='#build'>Build</a>
             </li>
             <li>
-                <a href='#'>Then use</a>
+                <a href='#then-use'>Then use</a>
             </li>
         </ul>
     </li>
@@ -32,6 +32,9 @@ Templates to create environments and applications easier with CloudFormation on 
             </li>
         </ul>
     </li>
+    <li>
+        <a href='#templates-and-sample'>Templates and sample</a>
+    </li>
 </ul>
 
 ## Usage without Docker
@@ -43,7 +46,7 @@ git clone https://github.com/deroldo/AwsCloudFormationCreator.git \
     && ./gradlew clean build 
 ```
 
-##### Then
+##### Then use
 > Basic:
 ```bash
 java -jar \
@@ -129,3 +132,7 @@ aws cloudformation describe-stacks \
 <small>
 PS.: Replace "STACK_NAME" and "OUTPUTKEY" for the correct value
 </small>
+
+## Templates and sample
+
+<a href='/templates'>Click here</a> to follow to templates and sample page

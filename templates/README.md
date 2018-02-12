@@ -13,10 +13,10 @@ Back to <a href='https://github.com/deroldo/AwsCloudFormationCreator'>AWS CloudF
         Environment
         <ul>
             <li>
-                <a href='#'>Cluster ECS</a>
+                <a href='/environment/cluster-ecs.yml'>Cluster ECS</a>
             </li>
             <li>
-                <a href='#'>ECR - Docker image repository</a>
+                <a href='/environment/ecr.yml'>ECR - Docker image repository</a>
             </li>
         </ul>
     </li>
@@ -24,16 +24,16 @@ Back to <a href='https://github.com/deroldo/AwsCloudFormationCreator'>AWS CloudF
         Application
         <ul>
             <li>
-                <a href='#'>EC2 running on cluster ECS</a>
+                <a href='/application/ec2-running-on-cluster-ecs.yml'>EC2 running on cluster ECS</a>
             </li>
             <li>
-                <a href='#'>RDS - Relational database</a>
+                <a href='/application/rds.yml'>RDS - Relational database</a>
             </li>
             <li>
-                <a href='#'>SNS - Topic</a>
+                <a href='/application/sns.yml'>SNS - Topic</a>
             </li>
             <li>
-                <a href='#'>SQS - Queue</a>
+                <a href='/application/sqs.yml'>SQS - Queue</a>
             </li>
         </ul>
     </li>

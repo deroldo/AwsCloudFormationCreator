@@ -1,7 +1,7 @@
 # AWS CloudFormation Creator
 
-[![Build Status](https://travis-ci.org/deroldo/AwsCloudFormationCreator.svg)](https://travis-ci.org/deroldo/AwsCloudFormationCreator)
-[![Coverage Status](https://coveralls.io/repos/github/deroldo/AwsCloudFormationCreator/badge.svg)](https://coveralls.io/github/deroldo/AwsCloudFormationCreator)
+[![Build Status](https://travis-ci.org/deroldo/AwsCloudFormationCreator.svg?branch=master)](https://travis-ci.org/deroldo/AwsCloudFormationCreator)
+[![Coverage Status](https://coveralls.io/repos/github/deroldo/AwsCloudFormationCreator/badge.svg?branch=master)](https://coveralls.io/github/deroldo/AwsCloudFormationCreator)
 
 ## Templates to create environments and applications with CloudFormation on AWS
 

@@ -3,9 +3,9 @@
 [![Build Status](https://travis-ci.org/deroldo/AwsCloudFormationCreator.svg?branch=master)](https://travis-ci.org/deroldo/AwsCloudFormationCreator)
 [![Coverage Status](https://coveralls.io/repos/github/deroldo/AwsCloudFormationCreator/badge.svg?branch=master)](https://coveralls.io/github/deroldo/AwsCloudFormationCreator)
 
-## Templates to create environments and applications with CloudFormation on AWS
+Templates to create environments and applications easier with CloudFormation on AWS
 
-### Usage
+## Usage without Docker
 
 ##### Build
 ```bash
@@ -41,7 +41,39 @@ java -jar \
 PS: To know about AWS authentication <a href='https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/DefaultAWSCredentialsProviderChain.html' target='_blank'>click here</a>
 </small>
 
-### Tips
+## Usage with Docker
+
+> Basic:
+```bash
+docker run \
+    -e USER_DATA='/data_dir/data.yml' \
+    -v ~/my_template_data_dir:/data_dir \
+    deroldo/awscloudformationcreator > ~/my_template_data_dir/aws.yml
+```
+
+> To file:
+```bash
+docker run \
+    -e USER_DATA='/data_dir/data.yml' \
+    -e AWS_FILE='/data_dir/aws.yml' \
+    -v ~/my_template_data_dir:/data_dir \
+    deroldo/awscloudformationcreator
+```
+
+> AWS publish:
+```bash
+docker run \
+    -e USER_DATA='/data_dir/data.yml' \
+    -e AWS_ACCESS_KEY_ID='MY_ACCESS_KEY_ID' \
+    -e AWS_SECRET_ACCESS_KEY='MY_SECRET_ACCESS_KEY' \
+    -e AWS_PUBLISH='true' \
+    -e AWS_REGION='us-east-1' \
+    -e STACK_NAME='my-stack-name' \
+    -v ~/my_template_data_dir:/data_dir \
+    deroldo/awscloudformationcreator
+```
+
+## Tips
 
 > How to get a resource id from an existing CloudFormation stack:
 ```bash

@@ -1,22 +1,26 @@
 package br.com.deroldo.aws.cloudformation.runner;
 
-import br.com.deroldo.aws.cloudformation.publish.CloudFormationPublisher;
-import br.com.deroldo.aws.cloudformation.userdata.InterpreterUserData;
+import static java.lang.Boolean.valueOf;
+import static java.util.Collections.singleton;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
 
-import static java.lang.Boolean.valueOf;
-import static java.util.Collections.singleton;
-import static org.apache.commons.lang3.StringUtils.isEmpty;
+import br.com.deroldo.aws.cloudformation.publish.CloudFormationPublisher;
+import br.com.deroldo.aws.cloudformation.userdata.InterpreterUserData;
 
 public class CloudFormationExecutor {
 
-    public static void execute(CloudFormationPublisher publisher) throws IOException {
+    public static void execute(CloudFormationPublisher publisher) throws Exception {
         String userData = System.getProperty("USER_DATA");
         if (isEmpty(userData)){
             throw new RuntimeException("Required param USER_DATA is missing");

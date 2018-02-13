@@ -1,0 +1,23 @@
+GlobalParameters:
+  Environment: development
+  ApplicationName: MyCluster
+  Domain: my-domain.com
+
+MyCluster:
+  Template: ClusterEcs
+  OpenSSHTo: '192.168.0.1' # Optional
+  HttpsEnable: false # Optional. Default is false
+  EcsAmiId: ami-83af8395 # Optional. Default is ami-83af8395. See more https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html
+  EcsInstanceType: t2.micro # Optional.Default is t2.micro
+  KeyName: development # Optional. Is a key PEM to do ssh access
+  VpcCidr: 10.1.0.0/16 # Optional. Default is 10.1.0.0/16
+  SubnetCidr1: 10.1.0.0/24 # Optional. Default is 10.1.0.0/24
+  SubnetCidr2: 10.1.1.0/24 # Optional. Default is 10.1.1.0/24
+  SubnetCidr3: 10.1.2.0/24 # Optional. Default is 10.1.2.0/24
+  SubnetCidr4: 10.1.3.0/24 # Optional. Default is 10.1.3.0/24
+  AsgMaxSize: 1 # Optional. Default is 1. Is the number max of cluster instances
+  AsgDesiredSize: 1 # Optional. Default is 1. Is the desired number of cluster instances running
+  VpcAvailabilityZones: us-east-1a,us-east-1c # Optional. Default is us-east-1a,us-east-1c
+  EbsVolumeType: gp2 # Optional. Default is ''. See more https://docs.aws.amazon.com/pt_br/AWSEC2/latest/UserGuide/EBSVolumeTypes.html
+  EbsVolumeSize: 20 # Optional. Default is 0
+  EmailResourceRecords: mx1.my-domain.com,mx2.my-domain.com # Optional. Default is ''

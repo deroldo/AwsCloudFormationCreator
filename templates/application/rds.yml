@@ -1,0 +1,20 @@
+# Change STACK_NAME to name of your stack
+# If necessary, change the value from your resource and/or output
+
+GlobalParameters:
+  Environment: development
+  ApplicationName: MyRds
+  Domain: Output::STACK_NAME::Domain1
+
+MyRds:
+  Template: Rds
+  VpcArn: ResourceId::STACK_NAME::Vpc1
+  DBParameterGroupName: ResourceId::STACK_NAME::MysqlParameterGroup1
+  DBMasterUsername: my-username
+  DBMasterUserPassword: my-password
+  DNSPrivado: ResourceId::STACK_NAME::DNSPrivado1
+  DBSubnet: ResourceId::STACK_NAME::DBSubnet1
+  DBSecurityGroups: ResourceId::STACK_NAME::SgDefault1
+  DBStorageSizeInGb: 20 # Optional. Default is 20
+  DBEngine: mysql # Optional. Default is mysql
+  DBInstanceClass: db.t2.micro # Optional. Default is db.t2.micro

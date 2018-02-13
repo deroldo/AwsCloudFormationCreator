@@ -39,6 +39,8 @@ public class AttributeIndexAppender {
                     addIndex(key, set.getValue().getAsJsonObject(), index);
                 } else if (set.getValue().isJsonArray()){
                     addIndexArray(key, set.getValue().getAsJsonArray(), index);
+                } else if (set.getValue().getAsString().contains("${".concat(key).concat("}"))){
+                    set.setValue(new JsonPrimitive(set.getValue().getAsString().replace("${".concat(key).concat("}"), "${".concat(key + index).concat("}"))));
                 }
             }
         });

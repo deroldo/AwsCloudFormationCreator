@@ -14,8 +14,8 @@ Resources:
       Any:
         Fn::If:
         - "AnyCondition1"
-        - "any2"
         - "bar"
+        - "any2"
       Other:
         Fn::GetAtt:
         - "AnyResource1"

@@ -13,9 +13,7 @@ import java.util.UUID;
 
 import static java.util.Collections.singleton;
 import static java.util.Objects.requireNonNull;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 

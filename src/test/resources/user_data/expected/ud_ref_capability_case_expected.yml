@@ -1,0 +1,575 @@
+---
+Resources:
+  Vpc1:
+    Type: "AWS::EC2::VPC"
+    Properties:
+      EnableDnsSupport: "true"
+      EnableDnsHostnames: "true"
+      Tags:
+      - Key: "Name"
+        Value:
+          Fn::Join:
+          - "-"
+          - - "my-env"
+            - "VPC"
+      CidrBlock: "10.1.0.0/16"
+  EcsInstanceRole1:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName:
+        Fn::Join:
+        - "-"
+        - - "my-env"
+          - "EcsRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: "Allow"
+          Principal:
+            Service: "ec2.amazonaws.com"
+          Action: "sts:AssumeRole"
+      Path: "/"
+      ManagedPolicyArns:
+      - "arn:aws:iam::aws:policy/AmazonRDSFullAccess"
+      - "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
+      - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+  SSHLocalRolePolicy1:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName:
+        Fn::Join:
+        - "-"
+        - - "my-env"
+          - "EcsPolicy"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: "Allow"
+          Action:
+          - "iam:ListUsers"
+          - "iam:GetGroup"
+          Resource: "*"
+        - Effect: "Allow"
+          Action:
+          - "iam:ListSSHPublicKeys"
+          - "iam:GetSSHPublicKey"
+          Resource:
+            Fn::Sub: "arn:aws:iam::${AWS::AccountId}:user/*"
+        - Effect: "Allow"
+          Action: "ec2:DescribeTags"
+          Resource: "*"
+      Roles:
+      - Ref: "EcsInstanceRole1"
+  EcsInstanceProfile1:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      InstanceProfileName:
+        Fn::Join:
+        - "-"
+        - - "my-env"
+          - "EcsProfile"
+      Roles:
+      - Ref: "EcsInstanceRole1"
+  EcsCluster1:
+    Type: "AWS::ECS::Cluster"
+    Properties:
+      ClusterName: "my-env"
+  PubSubnetAz11:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId:
+        Ref: "Vpc1"
+      AvailabilityZone:
+        Fn::Select:
+        - 0
+        - - "us-east-1a"
+          - "us-east-1c"
+      MapPublicIpOnLaunch: true
+      CidrBlock: "10.1.0.0/24"
+  PrivSubnetAz21:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId:
+        Ref: "Vpc1"
+      AvailabilityZone:
+        Fn::Select:
+        - 0
+        - - "us-east-1a"
+          - "us-east-1c"
+      MapPublicIpOnLaunch: false
+      CidrBlock: "10.1.1.0/24"
+  PubSubnetAz31:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId:
+        Ref: "Vpc1"
+      AvailabilityZone:
+        Fn::Select:
+        - 1
+        - - "us-east-1a"
+          - "us-east-1c"
+      MapPublicIpOnLaunch: true
+      CidrBlock: "10.1.2.0/24"
+  PrivSubnetAz41:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId:
+        Ref: "Vpc1"
+      AvailabilityZone:
+        Fn::Select:
+        - 1
+        - - "us-east-1a"
+          - "us-east-1c"
+      MapPublicIpOnLaunch: false
+      CidrBlock: "10.1.3.0/24"
+  InternetGateway1:
+    Type: "AWS::EC2::InternetGateway"
+  AttachGateway1:
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    Properties:
+      VpcId:
+        Ref: "Vpc1"
+      InternetGatewayId:
+        Ref: "InternetGateway1"
+  RouteViaIgw1:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId:
+        Ref: "Vpc1"
+  PublicRouteViaIgw1:
+    Type: "AWS::EC2::Route"
+    DependsOn: "AttachGateway1"
+    Properties:
+      RouteTableId:
+        Ref: "RouteViaIgw1"
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId:
+        Ref: "InternetGateway1"
+  PubSubnet1RouteTableAssociation1:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      SubnetId:
+        Ref: "PubSubnetAz11"
+      RouteTableId:
+        Ref: "RouteViaIgw1"
+  PrivSubnet2RouteTableAssociation1:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      SubnetId:
+        Ref: "PrivSubnetAz21"
+      RouteTableId:
+        Ref: "RouteViaIgw1"
+  PubSubnet3RouteTableAssociation1:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      SubnetId:
+        Ref: "PubSubnetAz31"
+      RouteTableId:
+        Ref: "RouteViaIgw1"
+  PrivSubnet4RouteTableAssociation1:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      SubnetId:
+        Ref: "PrivSubnetAz41"
+      RouteTableId:
+        Ref: "RouteViaIgw1"
+  EcsInstanceLc1:
+    Type: "AWS::AutoScaling::LaunchConfiguration"
+    Properties:
+      AssociatePublicIpAddress: true
+      IamInstanceProfile:
+        Ref: "EcsInstanceProfile1"
+      KeyName:
+        Fn::If:
+        - "CreateEC2LCWithKeyPair1"
+        - ""
+        - Ref: "AWS::NoValue"
+      SecurityGroups:
+        Fn::If:
+        - "ShouldOpenSSH1"
+        - - Ref: "SgDefault1"
+          - Ref: "SgSsh1"
+        - - Ref: "SgDefault1"
+      BlockDeviceMappings:
+        Fn::If:
+        - "CreateEbsVolume1"
+        - - DeviceName:
+              Fn::Join:
+              - "-"
+              - - "my-env"
+                - "volume"
+            Ebs:
+              VolumeType: ""
+              VolumeSize: 0
+        - Ref: "AWS::NoValue"
+      UserData:
+        Fn::Base64: "#!/bin/bash\necho ECS_CLUSTER=my-env >> /etc/ecs/ecs.config\n"
+      ImageId: "ami-83af8395"
+      InstanceType: "t2.micro"
+  EcsInstanceAsg1:
+    Type: "AWS::AutoScaling::AutoScalingGroup"
+    Properties:
+      VPCZoneIdentifier:
+      - Fn::Sub: "${PubSubnetAz11}, ${PrivSubnetAz21}, ${PubSubnetAz31}, ${PrivSubnetAz41}"
+      LaunchConfigurationName:
+        Ref: "EcsInstanceLc1"
+      MinSize: "0"
+      Tags:
+      - Key: "Name"
+        Value:
+          Fn::Join:
+          - "-"
+          - - "my-env"
+            - "ECS"
+        PropagateAtLaunch: "true"
+      - Key: "Description"
+        Value: "This instance was auto created by the cluster where it is running"
+        PropagateAtLaunch: "true"
+      MaxSize: 1
+      DesiredCapacity: 1
+  SgDefault1:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupName:
+        Fn::Join:
+        - "-"
+        - - "my-env"
+          - "Default"
+      GroupDescription: "Default SecurityGroup"
+      VpcId:
+        Ref: "Vpc1"
+  SgHttp1:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupName:
+        Fn::Join:
+        - "-"
+        - - "my-env"
+          - "HTTP"
+      GroupDescription: "SecurityGroup HTTP"
+      VpcId:
+        Ref: "Vpc1"
+  SgHttps1:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupName:
+        Fn::Join:
+        - "-"
+        - - "my-env"
+          - "HTTPS"
+      GroupDescription: "SecurityGroup HTTPS"
+      VpcId:
+        Ref: "Vpc1"
+  SgSsh1:
+    Condition: "ShouldOpenSSH1"
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupName:
+        Fn::Join:
+        - "-"
+        - - "my-env"
+          - "SSH"
+      GroupDescription: "SecurityGroup SSH"
+      VpcId:
+        Ref: "Vpc1"
+  SgDefaultIngress1:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    Properties:
+      GroupId:
+        Ref: "SgDefault1"
+      IpProtocol: "-1"
+      FromPort: "-1"
+      ToPort: "-1"
+      SourceSecurityGroupId:
+        Ref: "SgDefault1"
+  SgHttpIngress1:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    Properties:
+      GroupId:
+        Ref: "SgHttp1"
+      IpProtocol: "tcp"
+      FromPort: "80"
+      ToPort: "80"
+      CidrIp: "0.0.0.0/0"
+  SgHttpsIngress1:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    Properties:
+      GroupId:
+        Ref: "SgHttps1"
+      IpProtocol: "tcp"
+      FromPort: "443"
+      ToPort: "443"
+      CidrIp: "0.0.0.0/0"
+  SgSshIngress1:
+    Condition: "ShouldOpenSSH1"
+    Type: "AWS::EC2::SecurityGroupIngress"
+    Properties:
+      GroupId:
+        Ref: "SgSsh1"
+      IpProtocol: "tcp"
+      FromPort: "22"
+      ToPort: "22"
+      CidrIp:
+        Fn::Join:
+        - ""
+        - - "192.168.0.1"
+          - "/32"
+  LoadBalancer1:
+    Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+    Properties:
+      Name:
+        Fn::Join:
+        - "-"
+        - - "my-env"
+          - "ALB"
+      Scheme: "internet-facing"
+      Subnets:
+      - Ref: "PubSubnetAz11"
+      - Ref: "PubSubnetAz31"
+      LoadBalancerAttributes:
+      - Key: "idle_timeout.timeout_seconds"
+        Value: "60"
+      SecurityGroups:
+      - Ref: "SgDefault1"
+      - Ref: "SgHttp1"
+      - Ref: "SgHttps1"
+  HttpListener1:
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties:
+      DefaultActions:
+      - Type: "forward"
+        TargetGroupArn:
+          Ref: "TargetGroup1"
+      LoadBalancerArn:
+        Ref: "LoadBalancer1"
+      Port: "80"
+      Protocol: "HTTP"
+  HttpsListener1:
+    Condition: "CreateHTTPSThings1"
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties:
+      DefaultActions:
+      - Type: "forward"
+        TargetGroupArn:
+          Ref: "TargetGroup1"
+      LoadBalancerArn:
+        Ref: "LoadBalancer1"
+      Port: "443"
+      Protocol: "HTTPS"
+      Certificates:
+      - Ref: "CertificateHttp1"
+  TargetGroup1:
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Properties:
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: "/"
+      HealthCheckPort: "80"
+      HealthCheckProtocol: "HTTP"
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 5
+      Matcher:
+        HttpCode: "200"
+      Name:
+        Fn::Join:
+        - "-"
+        - - "my-env"
+          - "TG"
+      Port: 80
+      Protocol: "HTTP"
+      UnhealthyThresholdCount: 4
+      TargetGroupAttributes:
+      - Key: "deregistration_delay.timeout_seconds"
+        Value: "20"
+      VpcId:
+        Ref: "Vpc1"
+      Tags:
+      - Key: "Environment"
+        Value: "my-env"
+  CertificateHttp1:
+    Condition: "CreateHTTPSThings1"
+    Type: "AWS::CertificateManager::Certificate"
+    Properties:
+      DomainValidationOptions:
+      - DomainName: "test.com"
+        ValidationDomain: "test.com"
+      DomainName: "test.com"
+  CertificateDistribution1:
+    Condition: "CreateHTTPSThings1"
+    Type: "AWS::CloudFront::Distribution"
+    Properties:
+      DistributionConfig:
+        ViewerCertificate:
+          AcmCertificateArn:
+            Ref: "CertificateHttp1"
+          SslSupportMethod: "sni-only"
+        Aliases: "test.com"
+  DBSubnet1:
+    Type: "AWS::RDS::DBSubnetGroup"
+    Properties:
+      DBSubnetGroupDescription: "Subnet to database"
+      SubnetIds:
+      - Ref: "PubSubnetAz11"
+      - Ref: "PrivSubnetAz21"
+      - Ref: "PubSubnetAz31"
+      - Ref: "PrivSubnetAz41"
+      Tags:
+      - Key: "Name"
+        Value:
+          Fn::Join:
+          - "-"
+          - - "my-env"
+            - "DB"
+            - "Subnet"
+  DNSPublico1:
+    Type: "AWS::Route53::HostedZone"
+    Properties:
+      HostedZoneConfig:
+        Comment: "Hosted zone publico"
+      HostedZoneTags:
+      - Key: "Environment"
+        Value: "my-env"
+      Name: "test.com"
+  DNSPrivado1:
+    Type: "AWS::Route53::HostedZone"
+    Properties:
+      HostedZoneConfig:
+        Comment: "Hosted zone privado"
+      Name:
+        Fn::Join:
+        - "."
+        - - "internal"
+          - "test.com"
+      VPCs:
+      - VPCId:
+          Ref: "Vpc1"
+        VPCRegion:
+          Ref: "AWS::Region"
+      HostedZoneTags:
+      - Key: "Environment"
+        Value: "my-env"
+  DNSRecordAlbPublico1:
+    Type: "AWS::Route53::RecordSet"
+    DependsOn: "LoadBalancer1"
+    Properties:
+      HostedZoneId:
+        Ref: "DNSPublico1"
+      Comment: "DNS publico para uso das applications"
+      Name:
+        Fn::Join:
+        - "."
+        - - "alb"
+          - "test.com"
+      Type: "A"
+      AliasTarget:
+        DNSName:
+          Fn::GetAtt:
+          - "LoadBalancer1"
+          - "DNSName"
+        EvaluateTargetHealth: false
+        HostedZoneId:
+          Fn::GetAtt:
+          - "LoadBalancer1"
+          - "CanonicalHostedZoneID"
+  DNSRecordAlbPrivado1:
+    Type: "AWS::Route53::RecordSet"
+    DependsOn: "LoadBalancer1"
+    Properties:
+      HostedZoneId:
+        Ref: "DNSPrivado1"
+      Comment: "DNS privado para uso das applications"
+      Name:
+        Fn::Join:
+        - "."
+        - - "alb"
+          - "internal"
+          - "test.com"
+      Type: "A"
+      AliasTarget:
+        DNSName:
+          Fn::GetAtt:
+          - "LoadBalancer1"
+          - "DNSName"
+        EvaluateTargetHealth: false
+        HostedZoneId:
+          Fn::GetAtt:
+          - "LoadBalancer1"
+          - "CanonicalHostedZoneID"
+  Email1:
+    Type: "AWS::Route53::RecordSet"
+    Condition: "HasMx1"
+    Properties:
+      HostedZoneId:
+        Ref: "DNSPublico1"
+      Comment: "Email MX configuration"
+      Type: "MX"
+      TTL: "900"
+      Name: "test.com"
+      ResourceRecords:
+      - ""
+  MysqlParameterGroup1:
+    Type: "AWS::RDS::DBParameterGroup"
+    Properties:
+      Description: "CloudFormation Parameter Group for MySql - lower case para mysql,\
+        \ utf8 e innodb large"
+      Family: "mysql5.7"
+      Parameters:
+        lower_case_table_names: "1"
+        character_set_server: "utf8"
+        innodb_large_prefix: "1"
+      Tags:
+      - Key: "Name"
+        Value:
+          Fn::Join:
+          - "-"
+          - - "my-env"
+            - "lctn"
+      - Key: "Environment"
+        Value: "my-env"
+Outputs:
+  EcsInstanceAsgName1:
+    Description: "Auto Scaling Group Name for ECS Instances"
+    Value:
+      Ref: "EcsInstanceAsg1"
+  SecuritiesGroups1:
+    Description: "Securities groups"
+    Value:
+      Fn::If:
+      - "ShouldOpenSSH1"
+      - "SgDefault,SgHttp,SgHttps,SgSsh"
+      - "SgDefault,SgHttp,SgHttps"
+  Domain1:
+    Description: "Environment domain"
+    Value: "test.com"
+Conditions:
+  CreateEC2LCWithKeyPair1:
+    Fn::Not:
+    - Fn::Equals:
+      - ""
+      - ""
+  CreateEbsVolume1:
+    Fn::And:
+    - Fn::Not:
+      - Fn::Equals:
+        - 0
+        - 0
+    - Fn::Not:
+      - Fn::Equals:
+        - ""
+        - ""
+  CreateHTTPSThings1:
+    Fn::Equals:
+    - "false"
+    - "true"
+  ShouldOpenSSH1:
+    Fn::Not:
+    - Fn::Equals:
+      - "192.168.0.1"
+      - ""
+  HasMx1:
+    Fn::Not:
+    - Fn::Equals:
+      - Fn::Join:
+        - ""
+        - - ""
+      - ""
+

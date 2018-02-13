@@ -1,0 +1,3 @@
+MyData:
+  Template: ref_comma_delimited_case
+  Foo: bar1,bar2

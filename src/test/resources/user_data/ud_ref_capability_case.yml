@@ -1,0 +1,6 @@
+MyApp:
+  Template: ClusterEcs
+  Environment: my-env
+  ApplicationName: test
+  Domain: test.com
+  OpenSSHTo: 192.168.0.1

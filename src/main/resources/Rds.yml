@@ -39,6 +39,7 @@ Parameters:
   #-----------------------
   DBSecurityGroups:
     Type: CommaDelimitedList
+    Default: 'SgDefault'
   #-----------------------
   DBInstanceClass:
     Type: String

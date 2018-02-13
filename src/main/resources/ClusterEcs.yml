@@ -1,0 +1,724 @@
+#-----------------------
+#-----------------------
+Parameters:
+  #-----------------------
+  Environment:
+    Type: String
+  #-----------------------
+  Domain:
+    Type: String
+  #-----------------------
+  OpenSSHTo:
+    Type: String
+    Default: ''
+  #-----------------------
+  HttpsEnable:
+    Type: String
+    Default: 'false'
+  #-----------------------
+  EcsAmiId:
+    Type: String
+    Default: ami-83af8395
+  #-----------------------
+  EcsInstanceType:
+    Type: String
+    Default: t2.micro
+  #-----------------------
+  KeyName:
+    Type: String
+    Default: ''
+  #-----------------------
+  VpcCidr:
+    Type: String
+    Default: '10.1.0.0/16'
+  #-----------------------
+  SubnetCidr1:
+    Type: String
+    Default: '10.1.0.0/24'
+  #-----------------------
+  SubnetCidr2:
+    Type: String
+    Default: '10.1.1.0/24'
+  #-----------------------
+  SubnetCidr3:
+    Type: String
+    Default: '10.1.2.0/24'
+  #-----------------------
+  SubnetCidr4:
+    Type: String
+    Default: '10.1.3.0/24'
+  #-----------------------
+  AsgMaxSize:
+    Type: Number
+    Default: '1'
+  #-----------------------
+  AsgDesiredSize:
+    Type: Number
+    Default: '1'
+  #-----------------------
+  VpcAvailabilityZones:
+    Type: CommaDelimitedList
+    Default: 'us-east-1a,us-east-1c'
+  #-----------------------
+  EbsVolumeType:
+    Type: String
+    Default: ''
+  #-----------------------
+  EbsVolumeSize:
+    Type: Number
+    Default: '0'
+  #-----------------------
+  EmailResourceRecords:
+    Type: CommaDelimitedList
+    Default: ''
+
+
+#-----------------------
+#-----------------------
+Conditions:
+  #-----------------------
+  CreateEC2LCWithKeyPair:
+    Fn::Not:
+      - Fn::Equals:
+        - Ref: KeyName
+        - ''
+  #-----------------------
+  CreateEbsVolume:
+    Fn::And:
+    - Fn::Not:
+      - Fn::Equals:
+        - Ref: EbsVolumeSize
+        - 0
+    - Fn::Not:
+      - Fn::Equals:
+        - Ref: EbsVolumeType
+        - ''
+  #-----------------------
+  CreateHTTPSThings:
+    Fn::Equals:
+      - Ref: HttpsEnable
+      - 'true'
+  #-----------------------
+  ShouldOpenSSH:
+    Fn::Not:
+      - Fn::Equals:
+        - Ref: OpenSSHTo
+        - ''
+  #-----------------------
+  HasMx:
+    Fn::Not:
+      - Fn::Equals:
+          - Fn::Join:
+            - ''
+            - Ref: EmailResourceRecords
+          - ''
+
+
+#-----------------------
+#-----------------------
+Resources:
+  #-----------------------
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock:
+        Ref: VpcCidr
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      Tags:
+        - Key: "Name"
+          Value:
+            Fn::Join:
+              - "-"
+              - - Ref: Environment
+                - 'VPC'
+  #-----------------------
+  EcsInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Join:
+          - "-"
+          - - Ref: Environment
+            - 'EcsRole'
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: "Allow"
+          Principal:
+            Service: "ec2.amazonaws.com"
+          Action: "sts:AssumeRole"
+      Path: "/"
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonRDSFullAccess'
+        - 'arn:aws:iam::aws:policy/AmazonSQSFullAccess'
+        - 'arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role'
+  #-----------------------
+  SSHLocalRolePolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName:
+        Fn::Join:
+          - "-"
+          - - Ref: Environment
+            - 'EcsPolicy'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - 'iam:ListUsers'
+          - 'iam:GetGroup'
+          Resource: '*'
+        - Effect: Allow
+          Action:
+          - 'iam:ListSSHPublicKeys'
+          - 'iam:GetSSHPublicKey'
+          Resource:
+            Fn::Sub: 'arn:aws:iam::${AWS::AccountId}:user/*'
+        - Effect: Allow
+          Action: 'ec2:DescribeTags'
+          Resource: '*'
+      Roles:
+        - Ref: EcsInstanceRole
+  #-----------------------
+  EcsInstanceProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      InstanceProfileName:
+        Fn::Join:
+          - "-"
+          - - Ref: Environment
+            - 'EcsProfile'
+      Roles:
+      - Ref: EcsInstanceRole
+  #-----------------------
+  EcsCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName:
+        Ref: 'Environment'
+  #-----------------------
+  PubSubnetAz1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: Vpc
+      CidrBlock:
+        Ref: SubnetCidr1
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Ref: VpcAvailabilityZones
+      MapPublicIpOnLaunch: true
+  #-----------------------
+  PrivSubnetAz2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: Vpc
+      CidrBlock:
+        Ref: SubnetCidr2
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Ref: VpcAvailabilityZones
+      MapPublicIpOnLaunch: false
+  #-----------------------
+  PubSubnetAz3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: Vpc
+      CidrBlock:
+        Ref: SubnetCidr3
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Ref: VpcAvailabilityZones
+      MapPublicIpOnLaunch: true
+  #-----------------------
+  PrivSubnetAz4:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: Vpc
+      CidrBlock:
+        Ref: SubnetCidr4
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Ref: VpcAvailabilityZones
+      MapPublicIpOnLaunch: false
+  #-----------------------
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+  #-----------------------
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId:
+        Ref: Vpc
+      InternetGatewayId:
+        Ref: InternetGateway
+  #-----------------------
+  RouteViaIgw:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: Vpc
+  #-----------------------
+  PublicRouteViaIgw:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId:
+        Ref: RouteViaIgw
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: InternetGateway
+  #-----------------------
+  PubSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: PubSubnetAz1
+      RouteTableId:
+        Ref: RouteViaIgw
+  #-----------------------
+  PrivSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: PrivSubnetAz2
+      RouteTableId:
+        Ref: RouteViaIgw
+  #-----------------------
+  PubSubnet3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: PubSubnetAz3
+      RouteTableId:
+        Ref: RouteViaIgw
+  #-----------------------
+  PrivSubnet4RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: PrivSubnetAz4
+      RouteTableId:
+        Ref: RouteViaIgw
+  #-----------------------
+  EcsInstanceLc:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId:
+        Ref: EcsAmiId
+      InstanceType:
+        Ref: EcsInstanceType
+      AssociatePublicIpAddress: true
+      IamInstanceProfile:
+        Ref: EcsInstanceProfile
+      KeyName:
+        Fn::If:
+          - CreateEC2LCWithKeyPair
+          - Ref: KeyName
+          - Ref: "AWS::NoValue"
+      SecurityGroups:
+        Fn::If:
+        - ShouldOpenSSH
+        - - Ref: SgDefault
+          - Ref: SgSsh
+        - - Ref: SgDefault
+      BlockDeviceMappings:
+        Fn::If:
+        - CreateEbsVolume
+        - - DeviceName:
+              Fn::Join:
+                - '-'
+                - - Ref: Environment
+                  - 'volume'
+            Ebs:
+              VolumeSize:
+                Ref: EbsVolumeSize
+              VolumeType:
+                Ref: EbsVolumeType
+        - Ref: "AWS::NoValue"
+      UserData:
+        Fn::Base64:
+          Fn::Sub:
+            |
+              #!/bin/bash
+              echo ECS_CLUSTER=${Environment} >> /etc/ecs/ecs.config
+  #-----------------------
+  EcsInstanceAsg:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier:
+        - Fn::Sub: "${PubSubnetAz1}, ${PrivSubnetAz2}, ${PubSubnetAz3}, ${PrivSubnetAz4}"
+      LaunchConfigurationName:
+        Ref: EcsInstanceLc
+      MinSize: '0'
+      MaxSize:
+        Ref: AsgMaxSize
+      DesiredCapacity:
+        Ref: AsgDesiredSize
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Join:
+              - '-'
+              - - Ref: Environment
+                - 'ECS'
+          PropagateAtLaunch: 'true'
+        - Key: Description
+          Value: "This instance was auto created by the cluster where it is running"
+          PropagateAtLaunch: 'true'
+  #-----------------------
+  SgDefault:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupName:
+        Fn::Join:
+          - '-'
+          - - Ref: Environment
+            - 'Default'
+      GroupDescription: "Default SecurityGroup"
+      VpcId:
+        Ref: Vpc
+  #-----------------------
+  SgHttp:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupName:
+        Fn::Join:
+          - '-'
+          - - Ref: Environment
+            - 'HTTP'
+      GroupDescription: "SecurityGroup HTTP"
+      VpcId:
+        Ref: Vpc
+  #-----------------------
+  SgHttps:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupName:
+        Fn::Join:
+          - '-'
+          - - Ref: Environment
+            - 'HTTPS'
+      GroupDescription: "SecurityGroup HTTPS"
+      VpcId:
+        Ref: Vpc
+  #-----------------------
+  SgSsh:
+    Condition: ShouldOpenSSH
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupName:
+        Fn::Join:
+          - '-'
+          - - Ref: Environment
+            - 'SSH'
+      GroupDescription: "SecurityGroup SSH"
+      VpcId:
+        Ref: Vpc
+  #-----------------------
+  SgDefaultIngress:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    Properties:
+      GroupId:
+        Ref: SgDefault
+      IpProtocol: "-1"
+      FromPort: "-1"
+      ToPort: "-1"
+      SourceSecurityGroupId:
+        Ref: SgDefault
+  #-----------------------
+  SgHttpIngress:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    Properties:
+      GroupId:
+        Ref: SgHttp
+      IpProtocol: "tcp"
+      FromPort: "80"
+      ToPort: "80"
+      CidrIp: "0.0.0.0/0"
+  #-----------------------
+  SgHttpsIngress:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    Properties:
+      GroupId:
+        Ref: SgHttps
+      IpProtocol: "tcp"
+      FromPort: "443"
+      ToPort: "443"
+      CidrIp: "0.0.0.0/0"
+  #-----------------------
+  SgSshIngress:
+    Condition: ShouldOpenSSH
+    Type: "AWS::EC2::SecurityGroupIngress"
+    Properties:
+      GroupId:
+        Ref: SgSsh
+      IpProtocol: "tcp"
+      FromPort: "22"
+      ToPort: "22"
+      CidrIp:
+        Fn::Join:
+          - ""
+          - - Ref: OpenSSHTo
+            - "/32"
+  #-----------------------
+  LoadBalancer:
+    Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+    Properties:
+      Name:
+        Fn::Join:
+          - '-'
+          - - Ref: Environment
+            - 'ALB'
+      Scheme: "internet-facing"
+      Subnets:
+        - Ref: PubSubnetAz1
+        - Ref: PubSubnetAz3
+      LoadBalancerAttributes:
+        - Key: "idle_timeout.timeout_seconds"
+          Value: "60"
+      SecurityGroups:
+        - Ref: SgDefault
+        - Ref: SgHttp
+        - Ref: SgHttps
+  #-----------------------
+  HttpListener:
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn:
+            Ref: TargetGroup
+      LoadBalancerArn:
+        Ref: LoadBalancer
+      Port: "80"
+      Protocol: "HTTP"
+  #-----------------------
+  HttpsListener:
+    Condition: CreateHTTPSThings
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn:
+            Ref: TargetGroup
+      LoadBalancerArn:
+        Ref: LoadBalancer
+      Port: "443"
+      Protocol: "HTTPS"
+      Certificates:
+        - Ref: CertificateHttp
+  #-----------------------
+  TargetGroup:
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Properties:
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: "/"
+      HealthCheckPort: "80"
+      HealthCheckProtocol: "HTTP"
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 5
+      Matcher:
+        HttpCode: '200'
+      Name:
+        Fn::Join:
+          - '-'
+          - - Ref: Environment
+            - 'TG'
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 4
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: '20'
+      VpcId:
+        Ref: Vpc
+      Tags:
+        - Key: "Environment"
+          Value:
+            Ref: Environment
+  #-----------------------
+  CertificateHttp:
+    Condition: CreateHTTPSThings
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName:
+        Ref: Domain
+      DomainValidationOptions:
+        - DomainName:
+            Ref: Domain
+          ValidationDomain:
+            Ref: Domain
+  #-----------------------
+  CertificateDistribution:
+    Condition: CreateHTTPSThings
+    Type: 'AWS::CloudFront::Distribution'
+    Properties:
+      DistributionConfig:
+        Aliases:
+          Ref: Domain
+        ViewerCertificate:
+          AcmCertificateArn:
+            Ref: CertificateHttp
+          SslSupportMethod: "sni-only"
+  #-----------------------
+  DBSubnet:
+    Type: "AWS::RDS::DBSubnetGroup"
+    Properties:
+      DBSubnetGroupDescription: "Subnet to database"
+      SubnetIds:
+        - Ref: PubSubnetAz1
+        - Ref: PrivSubnetAz2
+        - Ref: PubSubnetAz3
+        - Ref: PrivSubnetAz4
+      Tags:
+        - Key: "Name"
+          Value:
+            Fn::Join:
+              - '-'
+              - - Ref: Environment
+                - 'DB'
+                - 'Subnet'
+  #-----------------------
+  DNSPublico:
+    Type: "AWS::Route53::HostedZone"
+    Properties:
+      HostedZoneConfig:
+        Comment: "Hosted zone publico"
+      Name:
+        Ref: Domain
+      HostedZoneTags:
+        - Key: "Environment"
+          Value:
+            Ref: Environment
+  #-----------------------
+  DNSPrivado:
+    Type: "AWS::Route53::HostedZone"
+    Properties:
+      HostedZoneConfig:
+        Comment: "Hosted zone privado"
+      Name:
+        Fn::Join:
+          - '.'
+          - - 'internal'
+            - Ref: Domain
+      VPCs:
+        - VPCId:
+            Ref: Vpc
+          VPCRegion:
+            Ref: "AWS::Region"
+      HostedZoneTags:
+        - Key: "Environment"
+          Value:
+            Ref: Environment
+  #-----------------------
+  DNSRecordAlbPublico:
+    Type: "AWS::Route53::RecordSet"
+    DependsOn: LoadBalancer
+    Properties:
+      HostedZoneId:
+        Ref: DNSPublico
+      Comment: "DNS publico para uso das applications"
+      Name:
+        Fn::Join:
+          - '.'
+          - - 'alb'
+            - Ref: Domain
+      Type: "A"
+      AliasTarget:
+        DNSName:
+          Fn::GetAtt:
+            - 'LoadBalancer'
+            - 'DNSName'
+        EvaluateTargetHealth: false
+        HostedZoneId:
+          Fn::GetAtt:
+            - 'LoadBalancer'
+            - 'CanonicalHostedZoneID'
+  #-----------------------
+  DNSRecordAlbPrivado:
+    Type: "AWS::Route53::RecordSet"
+    DependsOn: LoadBalancer
+    Properties:
+      HostedZoneId:
+        Ref: DNSPrivado
+      Comment: "DNS privado para uso das applications"
+      Name:
+        Fn::Join:
+          - '.'
+          - - 'alb'
+            - 'internal'
+            - Ref: Domain
+      Type: "A"
+      AliasTarget:
+        DNSName:
+          Fn::GetAtt:
+            - 'LoadBalancer'
+            - 'DNSName'
+        EvaluateTargetHealth: false
+        HostedZoneId:
+          Fn::GetAtt:
+            - 'LoadBalancer'
+            - 'CanonicalHostedZoneID'
+  #-----------------------
+  Email:
+    Type: "AWS::Route53::RecordSet"
+    Condition: HasMx
+    Properties:
+      HostedZoneId:
+        Ref: DNSPublico
+      Comment: "Email MX configuration"
+      Name:
+        Ref: Domain
+      Type: "MX"
+      TTL: '900'
+      ResourceRecords:
+        Ref: EmailResourceRecords
+  #-----------------------
+  MysqlParameterGroup:
+    Type: "AWS::RDS::DBParameterGroup"
+    Properties:
+      Description: "CloudFormation Parameter Group for MySql - lower case para mysql, utf8 e innodb large"
+      Family: "mysql5.7"
+      Parameters:
+        lower_case_table_names: "1"
+        character_set_server: "utf8"
+        innodb_large_prefix: "1"
+      Tags:
+        - Key: "Name"
+          Value:
+            Fn::Join:
+              - '-'
+              - - Ref: Environment
+                - 'lctn'
+        - Key: "Environment"
+          Value:
+            Ref: Environment
+
+#-----------------------
+#-----------------------
+Outputs:
+  EcsInstanceAsgName:
+    Description: Auto Scaling Group Name for ECS Instances
+    Value:
+      Ref: EcsInstanceAsg
+  SecuritiesGroups:
+    Description: Securities groups
+    Value:
+      Fn::If:
+      - ShouldOpenSSH
+      - 'SgDefault,SgHttp,SgHttps,SgSsh'
+      - 'SgDefault,SgHttp,SgHttps'
+  Domain:
+    Description: Environment domain
+    Value:
+      Ref: Domain

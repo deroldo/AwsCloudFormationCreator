@@ -1,6 +1,7 @@
 package br.com.deroldo.aws.cloudformation.userdata;
 
 import br.com.deroldo.aws.cloudformation.replace.AttributeIndexAppender;
+import com.amazonaws.services.cloudformation.model.Capability;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -24,113 +25,143 @@ public class InterpreterUserDataTest {
 
     @Test
     public void interpret_simple_case() throws IOException {
-        String yml = new InterpreterUserData(getInputStream("user_data/ud_ref_simple_case.yml")).interpretAndGetYml();
+        YmlData ymlData = new InterpreterUserData(getInputStream("user_data/ud_ref_simple_case.yml")).interpretAndGetYmlData();
         String expectedYml = getFileContent("user_data/expected/ud_ref_simple_case_expected.yml");
-        assertEquals(expectedYml, yml);
+        assertEquals(expectedYml, ymlData.getAwsYml());
     }
 
     @Test
     public void interpret_inside_list_case() throws IOException {
-        String yml = new InterpreterUserData(getInputStream("user_data/ud_ref_inside_list_case.yml")).interpretAndGetYml();
+        YmlData ymlData = new InterpreterUserData(getInputStream("user_data/ud_ref_inside_list_case.yml")).interpretAndGetYmlData();
         String expectedYml = getFileContent("user_data/expected/ud_ref_inside_list_case_expected.yml");
-        assertEquals(expectedYml, yml);
+        assertEquals(expectedYml, ymlData.getAwsYml());
     }
 
     @Test
     public void interpret_inside_father_list_case() throws IOException {
-        String yml = new InterpreterUserData(getInputStream("user_data/ud_ref_inside_father_list_case.yml")).interpretAndGetYml();
+        YmlData ymlData = new InterpreterUserData(getInputStream("user_data/ud_ref_inside_father_list_case.yml")).interpretAndGetYmlData();
         String expectedYml = getFileContent("user_data/expected/ud_ref_inside_father_list_case_expected.yml");
-        assertEquals(expectedYml, yml);
+        assertEquals(expectedYml, ymlData.getAwsYml());
     }
 
     @Test
     public void interpret_inside_grandfather_list_case() throws IOException {
-        String yml = new InterpreterUserData(getInputStream("user_data/ud_ref_inside_grandfather_list_case.yml")).interpretAndGetYml();
+        YmlData ymlData = new InterpreterUserData(getInputStream("user_data/ud_ref_inside_grandfather_list_case.yml")).interpretAndGetYmlData();
         String expectedYml = getFileContent("user_data/expected/ud_ref_inside_grandfather_list_case_expected.yml");
-        assertEquals(expectedYml, yml);
+        assertEquals(expectedYml, ymlData.getAwsYml());
     }
 
     @Test
     public void interpret_inside_father_and_grandfather_list_case() throws IOException {
-        String yml = new InterpreterUserData(getInputStream("user_data/ud_ref_inside_father_and_grandfather_list_case.yml")).interpretAndGetYml();
+        YmlData ymlData = new InterpreterUserData(getInputStream("user_data/ud_ref_inside_father_and_grandfather_list_case.yml")).interpretAndGetYmlData();
         String expectedYml = getFileContent("user_data/expected/ud_ref_inside_father_and_grandfather_list_case_expected.yml");
-        assertEquals(expectedYml, yml);
+        assertEquals(expectedYml, ymlData.getAwsYml());
     }
 
     @Test
     public void interpret_default_case() throws IOException {
-        String yml = new InterpreterUserData(getInputStream("user_data/ud_ref_default_case.yml")).interpretAndGetYml();
+        YmlData ymlData = new InterpreterUserData(getInputStream("user_data/ud_ref_default_case.yml")).interpretAndGetYmlData();
         String expectedYml = getFileContent("user_data/expected/ud_ref_default_case_expected.yml");
-        assertEquals(expectedYml, yml);
+        assertEquals(expectedYml, ymlData.getAwsYml());
     }
 
     @Test
     public void interpret_map_primitive_case() throws IOException {
-        String yml = new InterpreterUserData(getInputStream("user_data/ud_ref_map_primitive_case.yml")).interpretAndGetYml();
+        YmlData ymlData = new InterpreterUserData(getInputStream("user_data/ud_ref_map_primitive_case.yml")).interpretAndGetYmlData();
         String expectedYml = getFileContent("user_data/expected/ud_ref_map_primitive_case_expected.yml");
-        assertEquals(expectedYml, yml);
+        assertEquals(expectedYml, ymlData.getAwsYml());
     }
 
     @Test
     public void interpret_map_object_case() throws IOException {
-        String yml = new InterpreterUserData(getInputStream("user_data/ud_ref_map_object_case.yml")).interpretAndGetYml();
+        YmlData ymlData = new InterpreterUserData(getInputStream("user_data/ud_ref_map_object_case.yml")).interpretAndGetYmlData();
         String expectedYml = getFileContent("user_data/expected/ud_ref_map_object_case_expected.yml");
-        assertEquals(expectedYml, yml);
+        assertEquals(expectedYml, ymlData.getAwsYml());
     }
 
     @Test
     public void interpret_map_array_case() throws IOException {
-        String yml = new InterpreterUserData(getInputStream("user_data/ud_ref_map_array_case.yml")).interpretAndGetYml();
+        YmlData ymlData = new InterpreterUserData(getInputStream("user_data/ud_ref_map_array_case.yml")).interpretAndGetYmlData();
         String expectedYml = getFileContent("user_data/expected/ud_ref_map_array_case_expected.yml");
-        assertEquals(expectedYml, yml);
+        assertEquals(expectedYml, ymlData.getAwsYml());
     }
 
     @Test
     public void interpret_global_parameter_case() throws IOException {
-        String yml = new InterpreterUserData(getInputStream("user_data/ud_ref_global_parameter_case.yml")).interpretAndGetYml();
+        YmlData ymlData = new InterpreterUserData(getInputStream("user_data/ud_ref_global_parameter_case.yml")).interpretAndGetYmlData();
         String expectedYml = getFileContent("user_data/expected/ud_ref_global_parameter_case_expected.yml");
-        assertEquals(expectedYml, yml);
+        assertEquals(expectedYml, ymlData.getAwsYml());
     }
 
     @Test
     public void interpret_global_parameter_not_priority_case() throws IOException {
-        String yml = new InterpreterUserData(getInputStream("user_data/ud_ref_global_parameter_not_priority_case.yml")).interpretAndGetYml();
+        YmlData ymlData = new InterpreterUserData(getInputStream("user_data/ud_ref_global_parameter_not_priority_case.yml")).interpretAndGetYmlData();
         String expectedYml = getFileContent("user_data/expected/ud_ref_global_parameter_not_priority_case_expected.yml");
-        assertEquals(expectedYml, yml);
+        assertEquals(expectedYml, ymlData.getAwsYml());
     }
 
     @Test
     public void interpret_aws_ref_case() throws IOException {
-        String yml = new InterpreterUserData(getInputStream("user_data/ud_ref_aws_ref_case.yml")).interpretAndGetYml();
+        YmlData ymlData = new InterpreterUserData(getInputStream("user_data/ud_ref_aws_ref_case.yml")).interpretAndGetYmlData();
         String expectedYml = getFileContent("user_data/expected/ud_ref_aws_ref_case_expected.yml");
-        assertEquals(expectedYml, yml);
+        assertEquals(expectedYml, ymlData.getAwsYml());
     }
 
     @Test
     public void interpret_resource_ref_case() throws IOException {
-        String yml = new InterpreterUserData(getInputStream("user_data/ud_ref_resource_ref_case.yml")).interpretAndGetYml();
+        YmlData ymlData = new InterpreterUserData(getInputStream("user_data/ud_ref_resource_ref_case.yml")).interpretAndGetYmlData();
         String expectedYml = getFileContent("user_data/expected/ud_ref_resource_ref_case_expected.yml");
-        assertEquals(expectedYml, yml);
+        assertEquals(expectedYml, ymlData.getAwsYml());
     }
 
     @Test
     public void interpret_list_inside_list_case() throws IOException {
-        String yml = new InterpreterUserData(getInputStream("user_data/ud_ref_list_inside_list_case.yml")).interpretAndGetYml();
+        YmlData ymlData = new InterpreterUserData(getInputStream("user_data/ud_ref_list_inside_list_case.yml")).interpretAndGetYmlData();
         String expectedYml = getFileContent("user_data/expected/ud_ref_list_inside_list_case_expected.yml");
-        assertEquals(expectedYml, yml);
+        assertEquals(expectedYml, ymlData.getAwsYml());
     }
 
     @Test
     public void interpret_simple_number_case() throws IOException {
-        String yml = new InterpreterUserData(getInputStream("user_data/ud_ref_simple_number_case.yml")).interpretAndGetYml();
+        YmlData ymlData = new InterpreterUserData(getInputStream("user_data/ud_ref_simple_number_case.yml")).interpretAndGetYmlData();
         String expectedYml = getFileContent("user_data/expected/ud_ref_simple_number_case_expected.yml");
-        assertEquals(expectedYml, yml);
+        assertEquals(expectedYml, ymlData.getAwsYml());
+    }
+
+    @Test
+    public void interpret_sub_case() throws IOException {
+        YmlData ymlData = new InterpreterUserData(getInputStream("user_data/ud_ref_sub_case.yml")).interpretAndGetYmlData();
+        String expectedYml = getFileContent("user_data/expected/ud_ref_sub_case_expected.yml");
+        assertEquals(expectedYml, ymlData.getAwsYml());
+    }
+
+    @Test
+    public void interpret_sub_resource_case() throws IOException {
+        YmlData ymlData = new InterpreterUserData(getInputStream("user_data/ud_ref_sub_resource_case.yml")).interpretAndGetYmlData();
+        String expectedYml = getFileContent("user_data/expected/ud_ref_sub_resource_case_expected.yml");
+        assertEquals(expectedYml, ymlData.getAwsYml());
+    }
+
+    @Test
+    public void interpret_comma_delimited_case() throws IOException {
+        YmlData ymlData = new InterpreterUserData(getInputStream("user_data/ud_ref_comma_delimited_case.yml")).interpretAndGetYmlData();
+        String expectedYml = getFileContent("user_data/expected/ud_ref_comma_delimited_case_expected.yml");
+        assertEquals(expectedYml, ymlData.getAwsYml());
+    }
+
+    @Test
+    public void interpret_capability_delimited_case() throws IOException {
+        YmlData ymlData = new InterpreterUserData(getInputStream("user_data/ud_ref_capability_case.yml")).interpretAndGetYmlData();
+        String expectedYml = getFileContent("user_data/expected/ud_ref_capability_case_expected.yml");
+        assertEquals(expectedYml, ymlData.getAwsYml());
+        assertEquals(1, ymlData.getCapabilities().size());
+        assertEquals(Capability.CAPABILITY_NAMED_IAM, ymlData.getCapabilities().get(0));
     }
 
     @Test
     public void interpret_with_missing_parameter() {
         try {
-            new InterpreterUserData(getInputStream("user_data/ud_ref_parameter_is_missing.yml")).interpretAndGetYml();
+            new InterpreterUserData(getInputStream("user_data/ud_ref_parameter_is_missing.yml")).interpretAndGetYmlData();
             fail("Parameter missing exception must be throw");
         } catch (Exception e) {
             assertTrue(e.getMessage().contains("[Foo]"));

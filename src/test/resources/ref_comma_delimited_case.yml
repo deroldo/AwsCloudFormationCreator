@@ -1,0 +1,17 @@
+#-----------------------
+#-----------------------
+Parameters:
+  #-----------------------
+  Foo:
+    Type: CommaDelimitedList
+
+
+#-----------------------
+#-----------------------
+Resources:
+  #-----------------------
+  AnyResource:
+    Type: "AnyAwsType"
+    Properties:
+      Foo:
+        Ref: Foo

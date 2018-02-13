@@ -1,6 +1,7 @@
 package br.com.deroldo.aws.cloudformation.publish;
 
 import br.com.deroldo.aws.cloudformation.exception.AwsStatusFailException;
+import br.com.deroldo.aws.cloudformation.userdata.YmlData;
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.auth.AWSCredentialsProvider;
@@ -11,6 +12,7 @@ import com.amazonaws.services.cloudformation.model.*;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static com.amazonaws.services.cloudformation.model.StackStatus.*;
 import static java.lang.System.out;
@@ -21,7 +23,7 @@ import static java.lang.System.out;
  */
 public class CloudFormationPublisher {
 
-    private static final int DELAY = 10000;
+    private static int DELAY = 10000;
 
     private AmazonCloudFormationClientBuilder stackBuilder;
     private AWSCredentialsProvider credentialsProvider;
@@ -31,7 +33,7 @@ public class CloudFormationPublisher {
         this.credentialsProvider = credentialsProvider;
     }
 
-    public void publish(String awsYml) throws Exception {
+    public void publish(YmlData ymlData) throws Exception {
         try {
             this.credentialsProvider.getCredentials();
         } catch (Exception e) {
@@ -55,7 +57,10 @@ public class CloudFormationPublisher {
         DescribeStacksRequest describer = new DescribeStacksRequest();
         describer.setStackName(stackName);
 
-        uploadAwsYml(awsYml, cloudFormation, stackName, describer);
+        List<String> capabilitiesNames = ymlData.getCapabilities().stream()
+                .map(Capability::name)
+                .collect(Collectors.toList());
+        uploadAwsYml(ymlData.getAwsYml(), cloudFormation, stackName, describer, capabilitiesNames);
 
         try {
             out.println("Stack creation completed, the stack " + stackName + " completed with " + waitForCompletion(cloudFormation, describer));
@@ -78,32 +83,38 @@ public class CloudFormationPublisher {
         }
     }
 
-    private void uploadAwsYml (final String awsYml, final AmazonCloudFormation cloudFormation, final String stackName,
-            final DescribeStacksRequest describer) {
+    private void uploadAwsYml(String awsYml, AmazonCloudFormation cloudFormation, String stackName,
+                              DescribeStacksRequest describer, List<String> capabilities) {
         try {
             boolean stackAlreadyExists = !cloudFormation.describeStacks(describer).getStacks().isEmpty();
             if (stackAlreadyExists){
-                updateStack(awsYml, cloudFormation, stackName);
+                updateStack(awsYml, cloudFormation, stackName, capabilities);
             } else {
-                createStack(awsYml, cloudFormation, stackName);
+                createStack(awsYml, cloudFormation, stackName, capabilities);
             }
         } catch (AmazonCloudFormationException e){
-            createStack(awsYml, cloudFormation, stackName);
+            createStack(awsYml, cloudFormation, stackName, capabilities);
         }
     }
 
-    private void createStack (final String awsYml, final AmazonCloudFormation cloudFormation, final String stackName) {
+    private void createStack(String awsYml, AmazonCloudFormation cloudFormation, String stackName, List<String> capabilities) {
         CreateStackRequest createRequest = new CreateStackRequest();
         createRequest.setStackName(stackName);
         createRequest.setTemplateBody(awsYml);
+        if (!capabilities.isEmpty()){
+            createRequest.withCapabilities(capabilities);
+        }
         out.println("Creating a stack called " + createRequest.getStackName() + ".");
         cloudFormation.createStack(createRequest);
     }
 
-    private void updateStack (final String awsYml, final AmazonCloudFormation cloudFormation, final String stackName) {
+    private void updateStack (String awsYml, AmazonCloudFormation cloudFormation, String stackName, List<String> capabilities) {
         UpdateStackRequest updateRequest = new UpdateStackRequest();
         updateRequest.setStackName(stackName);
         updateRequest.setTemplateBody(awsYml);
+        if (!capabilities.isEmpty()){
+            updateRequest.withCapabilities(capabilities);
+        }
         out.println("Updating a stack called " + updateRequest.getStackName() + ".");
         cloudFormation.updateStack(updateRequest);
     }

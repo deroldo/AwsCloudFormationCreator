@@ -1,8 +1,10 @@
 package br.com.deroldo.aws.cloudformation.userdata;
 
 import br.com.deroldo.aws.cloudformation.find.DataFinder;
+import br.com.deroldo.aws.cloudformation.publish.TemplateCapability;
 import br.com.deroldo.aws.cloudformation.replace.AttributeIndexAppender;
-import com.fasterxml.jackson.core.JsonProcessingException;
+import br.com.deroldo.aws.cloudformation.replace.JsonType;
+import com.amazonaws.services.cloudformation.model.Capability;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -40,24 +42,28 @@ public class InterpreterUserData {
         this.file = file;
     }
 
-    public String interpretAndGetYml() throws IOException {
+    public YmlData interpretAndGetYmlData() throws IOException {
         JsonObject userDataObject = getJsonObject(this.file);
         JsonObject awsJsonObject = initializeAwsObject();
 
         Set<String> globalParams = getGlobalParameters(userDataObject);
         Set<String> userDataResources = getAllUserResources(userDataObject);
 
+        List<Capability> capabilities = new ArrayList<>();
         for (String userResourceName : userDataResources) {
-            findAndReplace(userDataObject, awsJsonObject, globalParams, userResourceName);
+            TemplateCapability templateCapability = findAndReplace(userDataObject, awsJsonObject, globalParams, userResourceName);
+            if (!TemplateCapability.DEFAULT.equals(templateCapability)){
+                capabilities.add(templateCapability.getCapability());
+            }
         }
 
         validateIfThereIsRefNotReplaced(awsJsonObject);
         removeEmptyAttribute(awsJsonObject);
 
-        return getAwsYml(awsJsonObject);
+        return new YmlData(getAwsYml(awsJsonObject), capabilities);
     }
 
-    private void findAndReplace(JsonObject userDataObject, JsonObject awsJsonObject, Set<String> globalParams, String userResourceName) throws IOException {
+    private TemplateCapability findAndReplace(JsonObject userDataObject, JsonObject awsJsonObject, Set<String> globalParams, String userResourceName) throws IOException {
         JsonObject userResource = userDataObject.get(userResourceName).getAsJsonObject();
         String templateName = userResource.get(TEMPLATE).getAsString();
         JsonObject template = getJsonObject(templateName);
@@ -68,6 +74,8 @@ public class InterpreterUserData {
         findAndReplaceToDefaultParam(template, parameters);
 
         AttributeIndexAppender.appendIndexOnMainAttributesName(MAIN_ATTRS, awsJsonObject, template);
+
+        return TemplateCapability.get(templateName);
     }
 
     private void findAndReplaceToDefaultParam(JsonObject template, JsonObject parameters) {
@@ -75,22 +83,22 @@ public class InterpreterUserData {
                 .filter(templateResourceParamName -> Objects.nonNull(parameters.get(templateResourceParamName).getAsJsonObject().get(DEFAULT)))
                 .forEach(templateResourceParamName -> {
                     JsonObject parameter = parameters.get(templateResourceParamName).getAsJsonObject();
-                    boolean isNumber = parameter.get(TYPE).getAsString().equals(NUMBER);
-                    DataFinder.findAndReplace(templateResourceParamName, parameter.get(DEFAULT), template, isNumber);
+                    JsonType jsonType = JsonType.get(parameter.get(TYPE).getAsString());
+                    DataFinder.findAndReplace(templateResourceParamName, parameter.get(DEFAULT), template, jsonType);
                 });
     }
 
     private void findAndReplaceToGlobalParam(JsonObject userDataObject, Set<String> globalParams, JsonObject template, JsonObject parameters) {
         globalParams.forEach(userResourceParamName -> {
-            boolean isNumber = isNumber(parameters, userResourceParamName);
-            DataFinder.findAndReplace(userResourceParamName, userDataObject.get(GLOBAL_PARAMETERS).getAsJsonObject().get(userResourceParamName), template, isNumber);
+            JsonType jsonType = getJsonType(parameters, userResourceParamName);
+            DataFinder.findAndReplace(userResourceParamName, userDataObject.get(GLOBAL_PARAMETERS).getAsJsonObject().get(userResourceParamName), template, jsonType);
         });
     }
 
     private void findAndReplaceToUserParam(JsonObject userResource, JsonObject template, JsonObject parameters) {
         userResource.keySet().forEach(userResourceParamName -> {
-            boolean isNumber = isNumber(parameters, userResourceParamName);
-            DataFinder.findAndReplace(userResourceParamName, userResource.get(userResourceParamName), template, isNumber);
+            JsonType jsonType = getJsonType(parameters, userResourceParamName);
+            DataFinder.findAndReplace(userResourceParamName, userResource.get(userResourceParamName), template, jsonType);
         });
     }
 
@@ -129,13 +137,13 @@ public class InterpreterUserData {
         return awsJsonObject;
     }
 
-    private static boolean isNumber(JsonObject parameters, String userResourceParamName) {
+    private static JsonType getJsonType(JsonObject parameters, String userResourceParamName) {
         return Optional.ofNullable(parameters.get(userResourceParamName))
                 .map(JsonElement::getAsJsonObject)
                 .map(parameter -> parameter.get(TYPE))
                 .map(JsonElement::getAsString)
-                .map(parameterType -> parameterType.equals(NUMBER))
-                .orElse(false);
+                .map(JsonType::get)
+                .orElse(JsonType.STRING);
     }
 
     private static Set<String> getAllRefs(JsonObject awsJsonObject) {

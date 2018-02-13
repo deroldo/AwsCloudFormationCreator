@@ -37,8 +37,12 @@ public class ReplaceData {
                     .filter(array -> StreamSupport.stream(array.spliterator(), false)
                             .anyMatch(e -> e.equals(father)))
                     .forEach(array -> {
-                        array.remove(father);
-                        array.add(this.jsonElement);
+                        List<JsonElement> elements = StreamSupport.stream(array.spliterator(), false).collect(Collectors.toList());
+                        for (int i = elements.size(); i > 0; i--) {
+                            if (elements.get(i - 1).equals(father)){
+                                array.set(i - 1, this.jsonElement);
+                            }
+                        }
                     });
         } else {
             grandfather.getAsJsonObject().entrySet().stream()

@@ -1,0 +1,21 @@
+#-----------------------
+#-----------------------
+Parameters:
+  #-----------------------
+  Foo:
+    Type: String
+
+
+#-----------------------
+#-----------------------
+Resources:
+  #-----------------------
+  AnyResource:
+    Type: "AnyAwsType"
+    Properties:
+      Foo:
+        Fn::Sub: "foo=${Foo}, other=${Other}"
+  Other:
+    Type: "AnyAwsType"
+    Properties:
+      Foo: "baaaar"

@@ -1,6 +1,7 @@
 package br.com.deroldo.aws.cloudformation.publish;
 
 import br.com.deroldo.aws.cloudformation.exception.AwsStatusFailException;
+import br.com.deroldo.aws.cloudformation.userdata.YmlData;
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.auth.AWSCredentialsProvider;
@@ -8,16 +9,14 @@ import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.cloudformation.AmazonCloudFormation;
 import com.amazonaws.services.cloudformation.AmazonCloudFormationClientBuilder;
-import com.amazonaws.services.cloudformation.model.AmazonCloudFormationException;
-import com.amazonaws.services.cloudformation.model.DescribeStacksResult;
-import com.amazonaws.services.cloudformation.model.Stack;
-import com.amazonaws.services.cloudformation.model.StackStatus;
+import com.amazonaws.services.cloudformation.model.*;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Collections;
 
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertTrue;
@@ -54,7 +53,7 @@ public class CloudFormationPublisherTest {
     public void publish_should_throw_AmazonClientException_when_credentials_provider_given_an_error() throws Exception {
         try {
             doThrow(RuntimeException.class).when(this.credentialsProvider).getCredentials();
-            this.publisher.publish(AWS_YML);
+            this.publisher.publish(new YmlData(AWS_YML, Collections.emptyList()));
             fail("Must throw AmazonClientException when authentication is not provided");
         } catch (AmazonClientException e) {
             assertTrue(e.getMessage().contains("AWS credentials not found"));
@@ -65,7 +64,7 @@ public class CloudFormationPublisherTest {
     public void publish_should_throw_IllegalArgumentException_when_region_is_invalid() throws Exception {
         System.setProperty("AWS_REGION", "fooRegion");
         try {
-            this.publisher.publish(AWS_YML);
+            this.publisher.publish(new YmlData(AWS_YML, Collections.emptyList()));
             fail("Must throw IllegalArgumentException when an invalid AWS_REGION is provided");
         } catch (IllegalArgumentException e) {
             assertTrue(e.getMessage().contains("fooRegion"));
@@ -76,7 +75,7 @@ public class CloudFormationPublisherTest {
     public void publish_should_throw_RuntimeException_when_region_is_null() throws Exception {
         System.clearProperty("AWS_REGION");
         try {
-            this.publisher.publish(AWS_YML);
+            this.publisher.publish(new YmlData(AWS_YML, Collections.emptyList()));
             fail("Must throw RuntimeException when AWS_REGION is not provided");
         } catch (RuntimeException e) {
             assertTrue(e.getMessage().contains("The AWS_REGION must be provided"));
@@ -87,7 +86,7 @@ public class CloudFormationPublisherTest {
     public void publish_should_throw_RuntimeException_when_stack_name_is_null() throws Exception {
         System.clearProperty("STACK_NAME");
         try {
-            this.publisher.publish(AWS_YML);
+            this.publisher.publish(new YmlData(AWS_YML, Collections.emptyList()));
             fail("Must throw RuntimeException when STACK_NAME is not provided");
         } catch (RuntimeException e) {
             assertTrue(e.getMessage().contains("The STACK_NAME must be provided"));
@@ -108,7 +107,28 @@ public class CloudFormationPublisherTest {
 
         doReturn(describeResult).when(this.cloudFormation).describeStacks(any());
 
-        this.publisher.publish(AWS_YML);
+        this.publisher.publish(new YmlData(AWS_YML, Collections.emptyList()));
+
+        verify(stack, times(3)).getStackStatus();
+        verify(this.cloudFormation).createStack(any());
+        verify(this.cloudFormation, never()).updateStack(any());
+    }
+
+    @Test
+    public void publish_create_stack_with_capability() throws Exception {
+        Stack stack = mock(Stack.class);
+        when(stack.getStackStatus())
+                .thenReturn(StackStatus.CREATE_IN_PROGRESS.name())
+                .thenReturn(StackStatus.CREATE_COMPLETE.name());
+
+        DescribeStacksResult describeResult = mock(DescribeStacksResult.class);
+        when(describeResult.getStacks())
+                .thenReturn(new ArrayList<>())
+                .thenReturn(singletonList(stack));
+
+        doReturn(describeResult).when(this.cloudFormation).describeStacks(any());
+
+        this.publisher.publish(new YmlData(AWS_YML, singletonList(Capability.CAPABILITY_NAMED_IAM)));
 
         verify(stack, times(3)).getStackStatus();
         verify(this.cloudFormation).createStack(any());
@@ -129,7 +149,7 @@ public class CloudFormationPublisherTest {
 
         doReturn(describeResult).when(this.cloudFormation).describeStacks(any());
 
-        this.publisher.publish(AWS_YML);
+        this.publisher.publish(new YmlData(AWS_YML, Collections.emptyList()));
 
         verify(stack, times(3)).getStackStatus();
         verify(this.cloudFormation).createStack(any());
@@ -146,7 +166,24 @@ public class CloudFormationPublisherTest {
 
         doReturn(describeResult).when(this.cloudFormation).describeStacks(any());
 
-        this.publisher.publish(AWS_YML);
+        this.publisher.publish(new YmlData(AWS_YML, Collections.emptyList()));
+
+        verify(stack, times(2)).getStackStatus();
+        verify(this.cloudFormation).updateStack(any());
+        verify(this.cloudFormation, never()).createStack(any());
+    }
+
+    @Test
+    public void publish_update_stack_with_capability() throws Exception {
+        Stack stack = mock(Stack.class);
+        when(stack.getStackStatus()).thenReturn(StackStatus.UPDATE_COMPLETE.name());
+
+        DescribeStacksResult describeResult = mock(DescribeStacksResult.class);
+        when(describeResult.getStacks()).thenReturn(singletonList(stack));
+
+        doReturn(describeResult).when(this.cloudFormation).describeStacks(any());
+
+        this.publisher.publish(new YmlData(AWS_YML, singletonList(Capability.CAPABILITY_NAMED_IAM)));
 
         verify(stack, times(2)).getStackStatus();
         verify(this.cloudFormation).updateStack(any());
@@ -165,7 +202,7 @@ public class CloudFormationPublisherTest {
 
         doReturn(describeResult).when(this.cloudFormation).describeStacks(any());
 
-        this.publisher.publish(AWS_YML);
+        this.publisher.publish(new YmlData(AWS_YML, Collections.emptyList()));
 
         verify(stack, never()).getStackStatus();
         verify(this.cloudFormation).updateStack(any());
@@ -182,7 +219,7 @@ public class CloudFormationPublisherTest {
 
         doReturn(describeResult).when(this.cloudFormation).describeStacks(any());
 
-        this.publisher.publish(AWS_YML);
+        this.publisher.publish(new YmlData(AWS_YML, Collections.emptyList()));
     }
 
     @Test(expected = AmazonServiceException.class)
@@ -195,7 +232,7 @@ public class CloudFormationPublisherTest {
 
         doReturn(describeResult).when(this.cloudFormation).describeStacks(any());
 
-        this.publisher.publish(AWS_YML);
+        this.publisher.publish(new YmlData(AWS_YML, Collections.emptyList()));
     }
 
     @Test(expected = AwsStatusFailException.class)
@@ -208,7 +245,7 @@ public class CloudFormationPublisherTest {
 
         doReturn(describeResult).when(this.cloudFormation).describeStacks(any());
 
-        this.publisher.publish(AWS_YML);
+        this.publisher.publish(new YmlData(AWS_YML, Collections.emptyList()));
     }
 
     @Test(expected = AwsStatusFailException.class)
@@ -221,7 +258,7 @@ public class CloudFormationPublisherTest {
 
         doReturn(describeResult).when(this.cloudFormation).describeStacks(any());
 
-        this.publisher.publish(AWS_YML);
+        this.publisher.publish(new YmlData(AWS_YML, Collections.emptyList()));
     }
 
     @Test(expected = AwsStatusFailException.class)
@@ -234,7 +271,7 @@ public class CloudFormationPublisherTest {
 
         doReturn(describeResult).when(this.cloudFormation).describeStacks(any());
 
-        this.publisher.publish(AWS_YML);
+        this.publisher.publish(new YmlData(AWS_YML, Collections.emptyList()));
     }
 
     @Test(expected = AwsStatusFailException.class)
@@ -247,7 +284,7 @@ public class CloudFormationPublisherTest {
 
         doReturn(describeResult).when(this.cloudFormation).describeStacks(any());
 
-        this.publisher.publish(AWS_YML);
+        this.publisher.publish(new YmlData(AWS_YML, Collections.emptyList()));
     }
 
     private void changeDelay() throws NoSuchFieldException, IllegalAccessException {

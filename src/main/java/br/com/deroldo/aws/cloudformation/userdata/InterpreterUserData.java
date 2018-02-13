@@ -1,6 +1,21 @@
 package br.com.deroldo.aws.cloudformation.userdata;
 
+import static java.lang.String.format;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import br.com.deroldo.aws.cloudformation.find.DataFinder;
+import br.com.deroldo.aws.cloudformation.publish.CloudFormationPublisher;
 import br.com.deroldo.aws.cloudformation.publish.TemplateCapability;
 import br.com.deroldo.aws.cloudformation.replace.AttributeIndexAppender;
 import br.com.deroldo.aws.cloudformation.replace.JsonType;
@@ -8,17 +23,11 @@ import com.amazonaws.services.cloudformation.model.Capability;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.*;
-import java.util.stream.Collectors;
-
-import static java.lang.String.format;
 
 public class InterpreterUserData {
 
@@ -42,7 +51,7 @@ public class InterpreterUserData {
         this.file = file;
     }
 
-    public YmlData interpretAndGetYmlData() throws IOException {
+    public YmlData interpretAndGetYmlData (CloudFormationPublisher publisher) throws IOException {
         JsonObject userDataObject = getJsonObject(this.file);
         JsonObject awsJsonObject = initializeAwsObject();
 
@@ -51,7 +60,7 @@ public class InterpreterUserData {
 
         List<Capability> capabilities = new ArrayList<>();
         for (String userResourceName : userDataResources) {
-            TemplateCapability templateCapability = findAndReplace(userDataObject, awsJsonObject, globalParams, userResourceName);
+            TemplateCapability templateCapability = findAndReplace(userDataObject, awsJsonObject, globalParams, userResourceName, publisher);
             if (!TemplateCapability.DEFAULT.equals(templateCapability)){
                 capabilities.add(templateCapability.getCapability());
             }
@@ -63,42 +72,47 @@ public class InterpreterUserData {
         return new YmlData(getAwsYml(awsJsonObject), capabilities);
     }
 
-    private TemplateCapability findAndReplace(JsonObject userDataObject, JsonObject awsJsonObject, Set<String> globalParams, String userResourceName) throws IOException {
+    private TemplateCapability findAndReplace (JsonObject userDataObject, JsonObject awsJsonObject,
+            Set<String> globalParams, String userResourceName,
+            CloudFormationPublisher publisher) throws IOException {
         JsonObject userResource = userDataObject.get(userResourceName).getAsJsonObject();
         String templateName = userResource.get(TEMPLATE).getAsString();
         JsonObject template = getJsonObject(templateName);
         JsonObject parameters = template.get(PARAMETERS).getAsJsonObject();
 
-        findAndReplaceToUserParam(userResource, template, parameters);
-        findAndReplaceToGlobalParam(userDataObject, globalParams, template, parameters);
-        findAndReplaceToDefaultParam(template, parameters);
+        findAndReplaceToUserParam(userResource, template, parameters, publisher);
+        findAndReplaceToGlobalParam(userDataObject, globalParams, template, parameters, publisher);
+        findAndReplaceToDefaultParam(template, parameters, publisher);
 
         AttributeIndexAppender.appendIndexOnMainAttributesName(MAIN_ATTRS, awsJsonObject, template);
 
         return TemplateCapability.get(templateName);
     }
 
-    private void findAndReplaceToDefaultParam(JsonObject template, JsonObject parameters) {
+    private void findAndReplaceToDefaultParam (JsonObject template, JsonObject parameters,
+            CloudFormationPublisher publisher) {
         parameters.getAsJsonObject().keySet().stream()
                 .filter(templateResourceParamName -> Objects.nonNull(parameters.get(templateResourceParamName).getAsJsonObject().get(DEFAULT)))
                 .forEach(templateResourceParamName -> {
                     JsonObject parameter = parameters.get(templateResourceParamName).getAsJsonObject();
                     JsonType jsonType = JsonType.get(parameter.get(TYPE).getAsString());
-                    DataFinder.findAndReplace(templateResourceParamName, parameter.get(DEFAULT), template, jsonType);
+                    DataFinder.findAndReplace(templateResourceParamName, parameter.get(DEFAULT), template, jsonType, publisher);
                 });
     }
 
-    private void findAndReplaceToGlobalParam(JsonObject userDataObject, Set<String> globalParams, JsonObject template, JsonObject parameters) {
+    private void findAndReplaceToGlobalParam (JsonObject userDataObject, Set<String> globalParams, JsonObject template,
+            JsonObject parameters, CloudFormationPublisher publisher) {
         globalParams.forEach(userResourceParamName -> {
             JsonType jsonType = getJsonType(parameters, userResourceParamName);
-            DataFinder.findAndReplace(userResourceParamName, userDataObject.get(GLOBAL_PARAMETERS).getAsJsonObject().get(userResourceParamName), template, jsonType);
+            DataFinder.findAndReplace(userResourceParamName, userDataObject.get(GLOBAL_PARAMETERS).getAsJsonObject().get(userResourceParamName), template, jsonType, publisher);
         });
     }
 
-    private void findAndReplaceToUserParam(JsonObject userResource, JsonObject template, JsonObject parameters) {
+    private void findAndReplaceToUserParam (JsonObject userResource, JsonObject template, JsonObject parameters,
+            CloudFormationPublisher publisher) {
         userResource.keySet().forEach(userResourceParamName -> {
             JsonType jsonType = getJsonType(parameters, userResourceParamName);
-            DataFinder.findAndReplace(userResourceParamName, userResource.get(userResourceParamName), template, jsonType);
+            DataFinder.findAndReplace(userResourceParamName, userResource.get(userResourceParamName), template, jsonType, publisher);
         });
     }
 

@@ -1,0 +1,3 @@
+MyData:
+  Template: ref_simple_case
+  Foo: Output::my-stack-name::my-resource

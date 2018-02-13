@@ -1,5 +1,23 @@
 package br.com.deroldo.aws.cloudformation.publish;
 
+import static java.util.Collections.singletonList;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Collections;
+
 import br.com.deroldo.aws.cloudformation.exception.AwsStatusFailException;
 import br.com.deroldo.aws.cloudformation.userdata.YmlData;
 import com.amazonaws.AmazonClientException;
@@ -9,20 +27,16 @@ import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.cloudformation.AmazonCloudFormation;
 import com.amazonaws.services.cloudformation.AmazonCloudFormationClientBuilder;
-import com.amazonaws.services.cloudformation.model.*;
+import com.amazonaws.services.cloudformation.model.AmazonCloudFormationException;
+import com.amazonaws.services.cloudformation.model.Capability;
+import com.amazonaws.services.cloudformation.model.DescribeStackResourceResult;
+import com.amazonaws.services.cloudformation.model.DescribeStacksResult;
+import com.amazonaws.services.cloudformation.model.Output;
+import com.amazonaws.services.cloudformation.model.Stack;
+import com.amazonaws.services.cloudformation.model.StackResourceDetail;
+import com.amazonaws.services.cloudformation.model.StackStatus;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Collections;
-
-import static java.util.Collections.singletonList;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
 public class CloudFormationPublisherTest {
 
@@ -285,6 +299,86 @@ public class CloudFormationPublisherTest {
         doReturn(describeResult).when(this.cloudFormation).describeStacks(any());
 
         this.publisher.publish(new YmlData(AWS_YML, Collections.emptyList()));
+    }
+
+    @Test
+    public void getOutput_should_return_aws_output(){
+        Output awsOutput = mock(Output.class);
+        doReturn("out").when(awsOutput).getOutputKey();
+        doReturn("foo").when(awsOutput).getOutputValue();
+
+        Stack stack = mock(Stack.class);
+        when(stack.getOutputs()).thenReturn(singletonList(awsOutput));
+
+        DescribeStacksResult describeResult = mock(DescribeStacksResult.class);
+        when(describeResult.getStacks()).thenReturn(singletonList(stack));
+
+        doReturn(describeResult).when(this.cloudFormation).describeStacks(any());
+
+        String output = this.publisher.getOutput(new AwsValueToGet("Output::stack::out"));
+        assertEquals("foo", output);
+    }
+
+    @Test
+    public void getOutput_should_throws_exception_when_key_is_not_found(){
+        Output awsOutput = mock(Output.class);
+        doReturn("anyOther").when(awsOutput).getOutputKey();
+
+        Stack stack = mock(Stack.class);
+        when(stack.getOutputs()).thenReturn(singletonList(awsOutput));
+
+        DescribeStacksResult describeResult = mock(DescribeStacksResult.class);
+        when(describeResult.getStacks()).thenReturn(singletonList(stack));
+
+        doReturn(describeResult).when(this.cloudFormation).describeStacks(any());
+
+        try {
+            this.publisher.getOutput(new AwsValueToGet("Output::stack::out"));
+            fail("Must throw RuntimeException when output key is not found");
+        } catch (RuntimeException e) {
+            assertTrue(e.getMessage().contains("out"));
+            assertTrue(e.getMessage().contains("not found"));
+        }
+    }
+
+    @Test
+    public void getOutput_should_throws_exception_when_aws_outputs_is_empty(){
+        Stack stack = mock(Stack.class);
+        when(stack.getOutputs()).thenReturn(Collections.emptyList());
+
+        DescribeStacksResult describeResult = mock(DescribeStacksResult.class);
+        when(describeResult.getStacks()).thenReturn(singletonList(stack));
+
+        doReturn(describeResult).when(this.cloudFormation).describeStacks(any());
+
+        try {
+            this.publisher.getOutput(new AwsValueToGet("Output::stack::out"));
+            fail("Must throw RuntimeException when output key is not found");
+        } catch (RuntimeException e) {
+            assertTrue(e.getMessage().contains("out"));
+            assertTrue(e.getMessage().contains("not found"));
+        }
+    }
+
+    @Test
+    public void getResourceId_should_return_physical_reource_id(){
+        StackResourceDetail detail = mock(StackResourceDetail.class);
+        doReturn("foo").when(detail).getPhysicalResourceId();
+
+        DescribeStackResourceResult describeResult = mock(DescribeStackResourceResult.class);
+        doReturn(detail).when(describeResult).getStackResourceDetail();
+
+        doReturn(describeResult).when(this.cloudFormation).describeStackResource(any());
+
+        String resourceId = this.publisher.getResourceId(new AwsValueToGet("Output::stack::out"));
+        assertEquals("foo", resourceId);
+    }
+
+    @Test(expected = RuntimeException.class)
+    public void getResourceId_should_throw_exception_when_aws_throws_too(){
+        doThrow(RuntimeException.class).when(this.cloudFormation).describeStackResource(any());
+
+        this.publisher.getResourceId(new AwsValueToGet("Output::stack::out"));
     }
 
     private void changeDelay() throws NoSuchFieldException, IllegalAccessException {

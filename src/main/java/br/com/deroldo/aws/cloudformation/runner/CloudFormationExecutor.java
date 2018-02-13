@@ -29,7 +29,7 @@ public class CloudFormationExecutor {
         Optional<String> awsPublish = Optional.ofNullable(System.getProperty("AWS_PUBLISH"));
         Optional<String> awsFile = Optional.ofNullable(System.getProperty("AWS_FILE"))
                 .map(awsFilePath -> isEmpty(awsFilePath) ? null : awsFilePath);
-        YmlData ymlData = new InterpreterUserData(getInputStream(userData)).interpretAndGetYmlData();
+        YmlData ymlData = new InterpreterUserData(getInputStream(userData)).interpretAndGetYmlData(publisher);
 
         if (awsPublish.isPresent() && valueOf(awsPublish.get())){
             publisher.publish(ymlData);

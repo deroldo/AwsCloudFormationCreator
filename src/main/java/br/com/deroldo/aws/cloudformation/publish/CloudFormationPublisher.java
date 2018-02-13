@@ -1,5 +1,19 @@
 package br.com.deroldo.aws.cloudformation.publish;
 
+import static com.amazonaws.services.cloudformation.model.StackStatus.CREATE_COMPLETE;
+import static com.amazonaws.services.cloudformation.model.StackStatus.CREATE_FAILED;
+import static com.amazonaws.services.cloudformation.model.StackStatus.DELETE_FAILED;
+import static com.amazonaws.services.cloudformation.model.StackStatus.ROLLBACK_COMPLETE;
+import static com.amazonaws.services.cloudformation.model.StackStatus.ROLLBACK_FAILED;
+import static com.amazonaws.services.cloudformation.model.StackStatus.UPDATE_COMPLETE;
+import static java.lang.String.format;
+import static java.lang.System.out;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
 import br.com.deroldo.aws.cloudformation.exception.AwsStatusFailException;
 import br.com.deroldo.aws.cloudformation.userdata.YmlData;
 import com.amazonaws.AmazonClientException;
@@ -8,14 +22,14 @@ import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.cloudformation.AmazonCloudFormation;
 import com.amazonaws.services.cloudformation.AmazonCloudFormationClientBuilder;
-import com.amazonaws.services.cloudformation.model.*;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
-import static com.amazonaws.services.cloudformation.model.StackStatus.*;
-import static java.lang.System.out;
+import com.amazonaws.services.cloudformation.model.AmazonCloudFormationException;
+import com.amazonaws.services.cloudformation.model.Capability;
+import com.amazonaws.services.cloudformation.model.CreateStackRequest;
+import com.amazonaws.services.cloudformation.model.DescribeStackResourceRequest;
+import com.amazonaws.services.cloudformation.model.DescribeStacksRequest;
+import com.amazonaws.services.cloudformation.model.Output;
+import com.amazonaws.services.cloudformation.model.Stack;
+import com.amazonaws.services.cloudformation.model.UpdateStackRequest;
 
 /**
  * Copied and adapted from:
@@ -33,20 +47,34 @@ public class CloudFormationPublisher {
         this.credentialsProvider = credentialsProvider;
     }
 
+    public String getOutput (AwsValueToGet awsValue) {
+        AmazonCloudFormation cloudFormation = getCloudFormation();
+
+        DescribeStacksRequest describer = new DescribeStacksRequest();
+        describer.setStackName(awsValue.getStackName());
+
+        return cloudFormation.describeStacks(describer).getStacks().stream()
+                .map(Stack::getOutputs)
+                .flatMap(Collection::stream)
+                .filter(output -> output.getOutputKey().equals(awsValue.getValue()))
+                .findFirst()
+                .map(Output::getOutputValue)
+                .orElseThrow(() -> new RuntimeException(format("Output %s from stack %s not found", awsValue.getValue(), awsValue.getStackName())));
+    }
+
+    public String getResourceId (AwsValueToGet awsValue) {
+        AmazonCloudFormation cloudFormation = getCloudFormation();
+
+        DescribeStackResourceRequest describer = new DescribeStackResourceRequest();
+        describer.setStackName(awsValue.getStackName());
+        describer.setLogicalResourceId(awsValue.getValue());
+
+        return cloudFormation.describeStackResource(describer)
+                .getStackResourceDetail().getPhysicalResourceId();
+    }
+
     public void publish(YmlData ymlData) throws Exception {
-        try {
-            this.credentialsProvider.getCredentials();
-        } catch (Exception e) {
-            throw new AmazonClientException("AWS credentials not found. See more: https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/DefaultAWSCredentialsProviderChain.html", e);
-        }
-
-        Regions region = Optional.ofNullable(System.getProperty("AWS_REGION"))
-                .map(Regions::fromName)
-                .orElseThrow(() -> new RuntimeException("The AWS_REGION must be provided"));
-
-        AmazonCloudFormation cloudFormation = this.stackBuilder.withCredentials(this.credentialsProvider)
-                .withRegion(region)
-                .build();
+        AmazonCloudFormation cloudFormation = getCloudFormation();
 
         String stackName = Optional.ofNullable(System.getProperty("STACK_NAME")).orElseThrow(() -> new RuntimeException("The STACK_NAME must be provided"));
 
@@ -81,6 +109,16 @@ public class CloudFormationPublisher {
             out.println("Error Message: " + ace.getMessage());
             throw ace;
         }
+    }
+
+    private AmazonCloudFormation getCloudFormation () {
+        Regions region = Optional.ofNullable(System.getProperty("AWS_REGION"))
+                .map(Regions::fromName)
+                .orElseThrow(() -> new RuntimeException("The AWS_REGION must be provided"));
+
+        return this.stackBuilder.withCredentials(getCredentials())
+                    .withRegion(region)
+                    .build();
     }
 
     private void uploadAwsYml(String awsYml, AmazonCloudFormation cloudFormation, String stackName,
@@ -171,4 +209,12 @@ public class CloudFormationPublisher {
         return CREATE_COMPLETE.name().equals(stackStatus) || UPDATE_COMPLETE.name().equals(stackStatus);
     }
 
+    private AWSCredentialsProvider getCredentials () {
+        try {
+            this.credentialsProvider.getCredentials();
+            return this.credentialsProvider;
+        } catch (Exception e) {
+            throw new AmazonClientException("AWS credentials not found. See more: https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/DefaultAWSCredentialsProviderChain.html", e);
+        }
+    }
 }

@@ -8,12 +8,17 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
+import br.com.deroldo.aws.cloudformation.publish.CloudFormationPublisher;
+
 public class ReplaceDataFactory {
 
-    public static Optional<ReplaceData> create(String userResourceParamName, JsonElement userResourceParamValue, String templateAttr, JsonElement templateAttrValue, JsonType jsonType) {
+    private static final String RESOURCE_ID = "^(ResourceId::[a-zA-Z0-9-_\\.]+::[a-zA-Z0-9-_\\.]+)$";
+    private static final String OUTPUT = "^(Output::[a-zA-Z0-9-_\\.]+::[a-zA-Z0-9-_\\.]+)$";
+
+    public static Optional<ReplaceData> create(String userResourceParamName, JsonElement userResourceParamValue, String templateAttr, JsonElement templateAttrValue, JsonType jsonType, CloudFormationPublisher publisher) {
         Optional<JsonElement> element = Optional.empty();
         if (isPrimitiveValidToReplace(userResourceParamName, userResourceParamValue, templateAttr, templateAttrValue)) {
-            element = Optional.of(getJsonPrimitive(userResourceParamValue, jsonType));
+            element = Optional.of(getJsonPrimitive(userResourceParamValue, jsonType, publisher));
         } else if (isMapValidToReplace(userResourceParamName, templateAttr, templateAttrValue)) {
             element = Optional.of(userResourceParamValue);
         } else if (isSubValidToReplace(userResourceParamName, templateAttr, templateAttrValue)) {
@@ -34,7 +39,7 @@ public class ReplaceDataFactory {
         return templateAttr.equals("Fn::Sub") && templateAttrValue.getAsString().contains("${".concat(userResourceParamName).concat("}"));
     }
 
-    private static JsonElement getJsonPrimitive(JsonElement userResourceParamValue, JsonType jsonType) {
+    private static JsonElement getJsonPrimitive (JsonElement userResourceParamValue, JsonType jsonType, CloudFormationPublisher publisher) {
         if (JsonType.NUMBER.equals(jsonType)) {
             return new JsonPrimitive(userResourceParamValue.getAsNumber());
         } else if (JsonType.COMMA_DELIMITED_LIST.equals(jsonType)){
@@ -45,7 +50,13 @@ public class ReplaceDataFactory {
             }
             return jsonArray;
         } else {
-            return new JsonPrimitive(userResourceParamValue.getAsString());
+            String paramValue = userResourceParamValue.getAsString();
+            if (paramValue.matches(RESOURCE_ID)) {
+                paramValue = AwsKeyFinder.resourceId(paramValue, publisher);
+            } else if (paramValue.matches(OUTPUT)){
+                paramValue = AwsKeyFinder.output(paramValue, publisher);
+            }
+            return new JsonPrimitive(paramValue);
         }
     }
 

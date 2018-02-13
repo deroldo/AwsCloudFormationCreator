@@ -109,6 +109,8 @@ docker run \
 
 ## Tips
 
+If you haven't `aws cli` installed, do it clicking <a href='https://docs.aws.amazon.com/cli/latest/userguide/installing.html'>here</a>
+
 ##### Get a resource id from CloudFormation stack:
 ```bash
 aws cloudformation describe-stack-resources \

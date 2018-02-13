@@ -41,6 +41,46 @@ Back to <a href='https://github.com/deroldo/AwsCloudFormationCreator'>AWS CloudF
 
 ## Template sample
 
+First, create a ECS cluster:
 ```bash
+GlobalParameters:
+  Environment: development
+  ApplicationName: MyCluster
+  Domain: my-domain.com
 
+MyCluster:
+  Template: ClusterEcs
+```
+
+Now, create an ECR repository:
+```bash
+//TODO
+```
+You will need push your docker image to the ECR repository. See more <a href='https://docs.aws.amazon.com/AmazonECR/latest/userguide/docker-push-ecr-image.html'>here</a>
+
+So, deploy your application on the cluster:
+```bash
+GlobalParameters:
+  Environment: development
+  ApplicationName: MyApp
+  Domain: Output::STACK_NAME::Domain1
+
+MyApp:
+  Template: Ec2RunningOnClusterEcs
+  ApiContainerPort: 80
+  ApplicationImage: 111111111111.dkr.ecr.my-region.amazonaws.com/my-image:latest
+  VpcArn: ResourceId::STACK_NAME::Vpc1
+  HttpListenerArn: ResourceId::STACK_NAME::HttpListener1
+  ListenerPriority: 1 # That can't be equal the priority number of another container
+  ListenerPath: /my-app
+
+MyRds:
+  Template: Rds
+  VpcArn: ResourceId::STACK_NAME::Vpc1
+  DBParameterGroupName: ResourceId::STACK_NAME::MysqlParameterGroup1
+  DBMasterUsername: my-username
+  DBMasterUserPassword: my-password
+  DNSPrivado: ResourceId::STACK_NAME::DNSPrivado1
+  DBSubnet: ResourceId::STACK_NAME::DBSubnet1
+  DBSecurityGroups: ResourceId::STACK_NAME::SgDefault1
 ```

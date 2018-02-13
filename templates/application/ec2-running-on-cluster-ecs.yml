@@ -1,0 +1,21 @@
+# Change STACK_NAME to name of your stack
+# If necessary, change the value from your resource and/or output
+
+GlobalParameters:
+  Environment: development
+  ApplicationName: MyApp
+  Domain: Output::STACK_NAME::Domain1
+
+MyApp:
+  Template: Ec2RunningOnClusterEcs
+  ApiContainerPort: 80
+  ApplicationImage: 111111111111.dkr.ecr.my-region.amazonaws.com/my-image:latest
+  VpcArn: ResourceId::STACK_NAME::Vpc1
+  HttpListenerArn: ResourceId::STACK_NAME::HttpListener1
+  ListenerPriority: 1 # That can't be equal the priority number of another container
+  ListenerPath: /my-app
+  HealthCheckPath: /health # Optional. Default is /health
+  DeployMinHealthPercent: 50 # Optional. Default is 50
+  DeployMaxHealthPercent: 100 # Optional. Default is 100
+  ContainerMemoryReservation: 512 # Optional. Default is 512
+  DesiredInstancesCount: 1 # Optional. Default is 1

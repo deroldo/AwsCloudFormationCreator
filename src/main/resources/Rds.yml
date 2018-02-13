@@ -8,9 +8,6 @@ Parameters:
   ApplicationName:
     Type: String
   #-----------------------
-  VpcArn:
-    Type: String
-  #-----------------------
   DBStorageSizeInGb:
     Type: String
     Default: '20'
@@ -39,7 +36,6 @@ Parameters:
   #-----------------------
   DBSecurityGroups:
     Type: CommaDelimitedList
-    Default: 'SgDefault'
   #-----------------------
   DBInstanceClass:
     Type: String

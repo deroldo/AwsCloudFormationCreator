@@ -46,18 +46,24 @@ public class ReplaceDataFactory {
             List<String> values = Arrays.asList(userResourceParamValue.getAsString().split(","));
             JsonArray jsonArray = new JsonArray(values.size());
             for (String value : values) {
-                jsonArray.add(new JsonPrimitive(value));
+                String paramValue = getAwsResourceOrOutputIfNeed(publisher, value);
+                jsonArray.add(new JsonPrimitive(paramValue));
             }
             return jsonArray;
         } else {
-            String paramValue = userResourceParamValue.getAsString();
-            if (paramValue.matches(RESOURCE_ID)) {
-                paramValue = AwsKeyFinder.resourceId(paramValue, publisher);
-            } else if (paramValue.matches(OUTPUT)){
-                paramValue = AwsKeyFinder.output(paramValue, publisher);
-            }
+            String paramValue = getAwsResourceOrOutputIfNeed(publisher, userResourceParamValue.getAsString());
             return new JsonPrimitive(paramValue);
         }
+    }
+
+    private static String getAwsResourceOrOutputIfNeed(CloudFormationPublisher publisher, String value) {
+        String paramValue = value;
+        if (paramValue.matches(RESOURCE_ID)) {
+            paramValue = AwsKeyFinder.resourceId(paramValue, publisher);
+        } else if (paramValue.matches(OUTPUT)){
+            paramValue = AwsKeyFinder.output(paramValue, publisher);
+        }
+        return paramValue;
     }
 
     private static JsonElement getSubJsonPrimitive(JsonElement userResourceParamValue, String userResourceParamName, JsonElement templateAttrValue) {

@@ -119,8 +119,16 @@ aws cloudformation describe-stack-resources \
     --query "(StackResources[].PhysicalResourceId)[0]"
 ```
 
+Or do that in your template:
+```bash
+...
+   AnyParam: ResourceId::STACK_NAME::RESOURCE_ID
+...
+```
+
 <small>
-PS.: Replace "STACK_NAME" and "RESOURCE_ID" for the correct value
+PS.: Replace "STACK_NAME" and "RESOURCE_ID" for the correct value;
+To use the template way, the AWS credentials must be provided.
 </small>
 
 ##### Get a output from CloudFormation stack:
@@ -131,8 +139,16 @@ aws cloudformation describe-stacks \
     --output text
 ```
 
+Or do that in your template:
+```bash
+...
+   AnyParam: Output::STACK_NAME::OUTPUTKEY
+...
+```
+
 <small>
-PS.: Replace "STACK_NAME" and "OUTPUTKEY" for the correct value
+PS.: Replace "STACK_NAME" and "OUTPUTKEY" for the correct value;
+To use the template way, the AWS credentials must be provided.
 </small>
 
 ## Templates and sample

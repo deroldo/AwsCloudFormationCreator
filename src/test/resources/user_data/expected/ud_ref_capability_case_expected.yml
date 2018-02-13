@@ -511,7 +511,7 @@ Resources:
     Properties:
       Description: "CloudFormation Parameter Group for MySql - lower case para mysql,\
         \ utf8 e innodb large"
-      Family: "mysql5.7"
+      Family: "mysql5.6"
       Parameters:
         lower_case_table_names: "1"
         character_set_server: "utf8"

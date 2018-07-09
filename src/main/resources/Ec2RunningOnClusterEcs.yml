@@ -5,6 +5,14 @@ Parameters:
   Environment:
     Type: String
   #-----------------------
+  UnhealthyThresholdCount:
+    Type: Number
+    Default: 4
+  #-----------------------
+  HealthyThresholdCount:
+    Type: Number
+    Default: 5
+  #-----------------------
   DeployMinHealthPercent:
     Type: Number
     Default: 50
@@ -149,7 +157,8 @@ Resources:
             - Ref: HealthCheckPath
       HealthCheckProtocol: "HTTP"
       HealthCheckTimeoutSeconds: 5
-      HealthyThresholdCount: 5
+      HealthyThresholdCount:
+        Ref: HealthyThresholdCount
       Matcher:
         HttpCode: '200'
       Name:
@@ -160,7 +169,8 @@ Resources:
             - 'TG'
       Port: 80
       Protocol: HTTP
-      UnhealthyThresholdCount: 4
+      UnhealthyThresholdCount:
+        Ref: UnhealthyThresholdCount
       TargetGroupAttributes:
         - Key: deregistration_delay.timeout_seconds
           Value: '20'

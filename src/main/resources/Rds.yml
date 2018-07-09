@@ -93,6 +93,7 @@ Resources:
         Fn::Join:
           - "."
           - - 'database'
+            - Ref: Environment
             - Ref: ApplicationName
             - 'internal'
             - Ref: Domain

@@ -1,0 +1,28 @@
+#-----------------------
+#-----------------------
+Parameters:
+  #-----------------------
+  Environment:
+    Type: String
+  #-----------------------
+  Name:
+    Type: String
+
+
+#-----------------------
+#-----------------------
+Resources:
+  #-----------------------
+  Topic:
+    Type: "AWS::SNS::Topic"
+    Properties:
+      DisplayName:
+        Fn::Join:
+          - '-'
+          - - Ref: Environment
+            - Ref: Name
+      TopicName:
+        Fn::Join:
+          - '-'
+          - - Ref: Environment
+            - Ref: Name

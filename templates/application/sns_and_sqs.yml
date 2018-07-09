@@ -1,0 +1,9 @@
+# That will create a topic named 'development-my-topic-and-queue'
+# and a queue named 'development-my-topic-and-queue'
+
+GlobalParameters:
+  Environment: development
+
+MySnsAndSqs:
+  Template: SnsAndSqs
+  Name: my-topic-and-queue

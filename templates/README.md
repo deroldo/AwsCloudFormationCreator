@@ -35,6 +35,9 @@ Back to <a href='https://github.com/deroldo/AwsCloudFormationCreator'>AWS CloudF
             <li>
                 <a href='/templates/application/sqs.yml'>SQS - Queue</a>
             </li>
+            <li>
+                <a href='/templates/application/sns_and_sqs.yml'>SQS subscribing a SNS</a>
+            </li>
         </ul>
     </li>
 </ul>

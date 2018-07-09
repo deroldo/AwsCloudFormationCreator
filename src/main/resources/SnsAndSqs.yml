@@ -1,0 +1,48 @@
+#-----------------------
+#-----------------------
+Parameters:
+  #-----------------------
+  Environment:
+    Type: String
+  #-----------------------
+  Name:
+    Type: String
+
+
+#-----------------------
+#-----------------------
+Resources:
+  #-----------------------
+  Topic:
+    Type: "AWS::SNS::Topic"
+    Properties:
+      DisplayName:
+        Fn::Join:
+          - '-'
+          - - Ref: Environment
+            - Ref: Name
+      TopicName:
+        Fn::Join:
+          - '-'
+          - - Ref: Environment
+            - Ref: Name
+  #-----------------------
+  Queue:
+    Type: "AWS::SQS::Queue"
+    Properties:
+      QueueName:
+        Fn::Join:
+          - '-'
+          - - Ref: Environment
+            - Ref: Name
+  #-----------------------
+  SnsSubscription:
+    Type: "AWS::SNS::Subscription"
+    Properties:
+      Endpoint:
+        Fn::GetAtt:
+          - 'Queue'
+          - 'Arn'
+      Protocol: sqs
+      TopicArn:
+        Ref: Topic

@@ -1,0 +1,8 @@
+# That will create a topic named 'development-my-topic'
+
+GlobalParameters:
+  Environment: development
+
+MySns:
+  Template: Sns
+  Name: my-topic

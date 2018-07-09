@@ -1,0 +1,10 @@
+# Change STACK_NAME to name of your stack
+# That will create a queue named 'development-my-queue'
+
+GlobalParameters:
+  Environment: development
+
+MySns:
+  Template: Sqs
+  Name: my-queue
+  SnsTopicArn: ResourceId::STACK_NAME::MySNS1 # Optional. Default is without SNS subscribe

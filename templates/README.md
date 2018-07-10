@@ -95,7 +95,9 @@ MyRds:
 You can replace your docker image tag `latest` to `${gitHash}`. It will be replace for the provided parameter `GIT_HASH`, like that:
 
 ```bash
+...
   ApplicationImage: 111111111111.dkr.ecr.my-region.amazonaws.com/my-image:${gitHash}
+...
 ```
 
 ```bash

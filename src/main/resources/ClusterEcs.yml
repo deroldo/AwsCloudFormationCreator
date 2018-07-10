@@ -632,6 +632,7 @@ Resources:
         Fn::Join:
           - '.'
           - - 'alb'
+            - Ref: Environment
             - Ref: Domain
       Type: "A"
       AliasTarget:
@@ -656,6 +657,7 @@ Resources:
         Fn::Join:
           - '.'
           - - 'alb'
+            - Ref: Environment
             - 'internal'
             - Ref: Domain
       Type: "A"

@@ -47,8 +47,8 @@ public class CloudFormationPublisher {
         this.credentialsProvider = credentialsProvider;
     }
 
-    public String getOutput (AwsValueToGet awsValue) {
-        AmazonCloudFormation cloudFormation = getCloudFormation();
+    public String getOutput (AwsValueToGet awsValue, boolean toPublish) {
+        AmazonCloudFormation cloudFormation = getCloudFormation(toPublish);
 
         DescribeStacksRequest describer = new DescribeStacksRequest();
         describer.setStackName(awsValue.getStackName());
@@ -56,14 +56,14 @@ public class CloudFormationPublisher {
         return cloudFormation.describeStacks(describer).getStacks().stream()
                 .map(Stack::getOutputs)
                 .flatMap(Collection::stream)
-                .filter(output -> output.getOutputKey().equals(awsValue.getValue()))
+                .filter(op -> op.getOutputKey().equals(awsValue.getValue()))
                 .findFirst()
                 .map(Output::getOutputValue)
                 .orElseThrow(() -> new RuntimeException(format("Output %s from stack %s not found", awsValue.getValue(), awsValue.getStackName())));
     }
 
-    public String getResourceId (AwsValueToGet awsValue) {
-        AmazonCloudFormation cloudFormation = getCloudFormation();
+    public String getResourceId(AwsValueToGet awsValue, boolean toPublish) {
+        AmazonCloudFormation cloudFormation = getCloudFormation(toPublish);
 
         DescribeStackResourceRequest describer = new DescribeStackResourceRequest();
         describer.setStackName(awsValue.getStackName());
@@ -74,7 +74,7 @@ public class CloudFormationPublisher {
     }
 
     public void publish(YmlData ymlData) throws Exception {
-        AmazonCloudFormation cloudFormation = getCloudFormation();
+        AmazonCloudFormation cloudFormation = getCloudFormation(true);
 
         String stackName = Optional.ofNullable(System.getProperty("STACK_NAME")).orElseThrow(() -> new RuntimeException("The STACK_NAME must be provided"));
 
@@ -111,10 +111,11 @@ public class CloudFormationPublisher {
         }
     }
 
-    private AmazonCloudFormation getCloudFormation () {
+    private AmazonCloudFormation getCloudFormation (boolean toPublish) {
         Regions region = Optional.ofNullable(System.getProperty("AWS_REGION"))
+                .map(awsRegion -> "".equals(awsRegion) ? null : awsRegion)
                 .map(Regions::fromName)
-                .orElseThrow(() -> new RuntimeException("The AWS_REGION must be provided"));
+                .orElseThrow(() -> new RuntimeException(toPublish ? "To publish, the AWS_REGION must be provided" : "The AWS_REGION must be provided to complete this template"));
 
         return this.stackBuilder.withCredentials(getCredentials())
                     .withRegion(region)

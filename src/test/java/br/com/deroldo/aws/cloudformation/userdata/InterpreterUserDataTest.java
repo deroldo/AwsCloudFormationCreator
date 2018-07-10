@@ -5,7 +5,6 @@ import br.com.deroldo.aws.cloudformation.replace.AttributeIndexAppender;
 import com.amazonaws.services.cloudformation.model.Capability;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -18,6 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static java.util.Objects.requireNonNull;
 import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 
@@ -157,7 +157,7 @@ public class InterpreterUserDataTest {
     @Test
     public void interpret_get_resource_id_case() throws IOException {
         CloudFormationPublisher publisher = mock(CloudFormationPublisher.class);
-        doReturn("bar").when(publisher).getResourceId(any());
+        doReturn("bar").when(publisher).getResourceId(any(), anyBoolean());
         YmlData ymlData = new InterpreterUserData(getInputStream("user_data/ud_ref_get_resource_id_case.yml")).interpretAndGetYmlData(publisher);
         String expectedYml = getFileContent("user_data/expected/ud_ref_simple_case_expected.yml");
         assertEquals(expectedYml, ymlData.getAwsYml());
@@ -166,7 +166,7 @@ public class InterpreterUserDataTest {
     @Test
     public void interpret_get_output_case() throws IOException {
         CloudFormationPublisher publisher = mock(CloudFormationPublisher.class);
-        doReturn("bar").when(publisher).getOutput(any());
+        doReturn("bar").when(publisher).getOutput(any(), anyBoolean());
         YmlData ymlData = new InterpreterUserData(getInputStream("user_data/ud_ref_get_output_case.yml")).interpretAndGetYmlData(publisher);
         String expectedYml = getFileContent("user_data/expected/ud_ref_simple_case_expected.yml");
         assertEquals(expectedYml, ymlData.getAwsYml());

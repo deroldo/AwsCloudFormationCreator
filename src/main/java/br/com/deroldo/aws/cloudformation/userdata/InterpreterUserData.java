@@ -1,19 +1,5 @@
 package br.com.deroldo.aws.cloudformation.userdata;
 
-import static java.lang.String.format;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import br.com.deroldo.aws.cloudformation.find.DataFinder;
 import br.com.deroldo.aws.cloudformation.publish.CloudFormationPublisher;
 import br.com.deroldo.aws.cloudformation.publish.TemplateCapability;
@@ -23,11 +9,17 @@ import com.amazonaws.services.cloudformation.model.Capability;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static java.lang.String.format;
 
 public class InterpreterUserData {
 
@@ -41,7 +33,6 @@ public class InterpreterUserData {
     private static String TEMPLATE = "Template";
     private static String PARAMETERS = "Parameters";
     private static String TYPE = "Type";
-    private static String NUMBER = "Number";
     private static String DEFAULT = "Default";
     private static String REF = "Ref";
 
@@ -205,8 +196,9 @@ public class InterpreterUserData {
 
     private static JsonObject getJsonObject(InputStream file) throws IOException {
         JsonNode userData = YML_MAPPER.readValue(file, JsonNode.class);
-        String userDataJson = JSON_MAPPER.writeValueAsString(userData);
-        return GSON.fromJson(userDataJson, JsonObject.class);
+        final String userDataJson = JSON_MAPPER.writeValueAsString(userData);
+        final String replacedUserDataJson = Optional.ofNullable(System.getProperty("GIT_HASH")).map(gitHash -> userDataJson.replace("${gitHash}", gitHash)).orElse(userDataJson);
+        return GSON.fromJson(replacedUserDataJson, JsonObject.class);
     }
 
 }

@@ -89,3 +89,15 @@ MyRds:
   DBSubnet: ResourceId::STACK_NAME::DBSubnet1
   DBSecurityGroups: ResourceId::STACK_NAME::SgDefault1
 ```
+
+## Tip
+
+You can replace your docker image tag `latest` to `${gitHash}`. It will be replace for the provided parameter `GIT_HASH`, like that:
+
+```bash
+docker run \
+    -e USER_DATA='/data_dir/data.yml' \
+    -e GIT_HASH=$(git rev-parse --short HEAD) \
+    -v ~/my_template_data_dir:/data_dir \
+    deroldo/awscloudformationcreator
+```

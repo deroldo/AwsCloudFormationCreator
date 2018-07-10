@@ -389,10 +389,31 @@ Resources:
     Condition: "CreateHTTPSThings1"
     Type: "AWS::CertificateManager::Certificate"
     Properties:
+      DomainName:
+        Fn::If:
+        - "ShouldUseEnvironmentOnHost1"
+        - Fn::Join:
+          - "."
+          - - "my-env"
+            - "test.com"
+        - "test.com"
       DomainValidationOptions:
-      - DomainName: "test.com"
-        ValidationDomain: "test.com"
-      DomainName: "test.com"
+      - DomainName:
+          Fn::If:
+          - "ShouldUseEnvironmentOnHost1"
+          - Fn::Join:
+            - "."
+            - - "my-env"
+              - "test.com"
+          - "test.com"
+        ValidationDomain:
+          Fn::If:
+          - "ShouldUseEnvironmentOnHost1"
+          - Fn::Join:
+            - "."
+            - - "my-env"
+              - "test.com"
+          - "test.com"
   CertificateDistribution1:
     Condition: "CreateHTTPSThings1"
     Type: "AWS::CloudFront::Distribution"
@@ -425,20 +446,34 @@ Resources:
     Properties:
       HostedZoneConfig:
         Comment: "Hosted zone publico"
+      Name:
+        Fn::If:
+        - "ShouldUseEnvironmentOnHost1"
+        - Fn::Join:
+          - "."
+          - - "my-env"
+            - "test.com"
+        - "test.com"
       HostedZoneTags:
       - Key: "Environment"
         Value: "my-env"
-      Name: "test.com"
   DNSPrivado1:
     Type: "AWS::Route53::HostedZone"
     Properties:
       HostedZoneConfig:
         Comment: "Hosted zone privado"
       Name:
-        Fn::Join:
-        - "."
-        - - "internal"
-          - "test.com"
+        Fn::If:
+        - "ShouldUseEnvironmentOnHost1"
+        - Fn::Join:
+          - "."
+          - - "my-env"
+            - "internal"
+            - "test.com"
+        - Fn::Join:
+          - "."
+          - - "internal"
+            - "test.com"
       VPCs:
       - VPCId:
           Ref: "Vpc1"
@@ -455,11 +490,17 @@ Resources:
         Ref: "DNSPublico1"
       Comment: "DNS publico para uso das applications"
       Name:
-        Fn::Join:
-        - "."
-        - - "alb"
-          - "my-env"
-          - "test.com"
+        Fn::If:
+        - "ShouldUseEnvironmentOnHost1"
+        - Fn::Join:
+          - "."
+          - - "alb"
+            - "my-env"
+            - "test.com"
+        - Fn::Join:
+          - "."
+          - - "alb"
+            - "test.com"
       Type: "A"
       AliasTarget:
         DNSName:
@@ -479,12 +520,19 @@ Resources:
         Ref: "DNSPrivado1"
       Comment: "DNS privado para uso das applications"
       Name:
-        Fn::Join:
-        - "."
-        - - "alb"
-          - "my-env"
-          - "internal"
-          - "test.com"
+        Fn::If:
+        - "ShouldUseEnvironmentOnHost1"
+        - Fn::Join:
+          - "."
+          - - "alb"
+            - "my-env"
+            - "internal"
+            - "test.com"
+        - Fn::Join:
+          - "."
+          - - "alb"
+            - "internal"
+            - "test.com"
       Type: "A"
       AliasTarget:
         DNSName:
@@ -503,9 +551,16 @@ Resources:
       HostedZoneId:
         Ref: "DNSPublico1"
       Comment: "Email MX configuration"
+      Name:
+        Fn::If:
+        - "ShouldUseEnvironmentOnHost1"
+        - Fn::Join:
+          - "."
+          - - "my-env"
+            - "test.com"
+        - "test.com"
       Type: "MX"
       TTL: "900"
-      Name: "test.com"
       ResourceRecords:
       - ""
   MysqlParameterGroup1:
@@ -541,7 +596,14 @@ Outputs:
       - "SgDefault,SgHttp,SgHttps"
   Domain1:
     Description: "Environment domain"
-    Value: "test.com"
+    Value:
+      Fn::If:
+      - "ShouldUseEnvironmentOnHost1"
+      - Fn::Join:
+        - "."
+        - - "my-env"
+          - "test.com"
+      - "test.com"
 Conditions:
   CreateEC2LCWithKeyPair1:
     Fn::Not:
@@ -567,6 +629,10 @@ Conditions:
     - Fn::Equals:
       - "192.168.0.1"
       - ""
+  ShouldUseEnvironmentOnHost1:
+    Fn::Equals:
+    - "true"
+    - "true"
   HasMx1:
     Fn::Not:
     - Fn::Equals:

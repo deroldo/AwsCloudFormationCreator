@@ -192,10 +192,10 @@ Resources:
       Conditions:
         - Field: "path-pattern"
           Values:
-            Fn::Join:
+            - Fn::Join:
               - ''
               - - Ref: ListenerPath
-                - Ref: '/*'
+                - '/*'
       Actions:
         - Type: "forward"
           TargetGroupArn:
@@ -212,7 +212,10 @@ Resources:
       Conditions:
         - Field: "path-pattern"
           Values:
-            - Ref: ListenerPath
+            - Fn::Join:
+              - ''
+              - - Ref: ListenerPath
+                - '/*'
       Actions:
         - Type: "forward"
           TargetGroupArn:

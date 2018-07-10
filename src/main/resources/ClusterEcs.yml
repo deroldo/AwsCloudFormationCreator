@@ -5,6 +5,10 @@ Parameters:
   Environment:
     Type: String
   #-----------------------
+  UseEnvironmentOnHost:
+    Type: String
+    Default: 'true'
+  #-----------------------
   Domain:
     Type: String
   #-----------------------
@@ -104,6 +108,11 @@ Conditions:
       - Fn::Equals:
         - Ref: OpenSSHTo
         - ''
+  #-----------------------
+  ShouldUseEnvironmentOnHost:
+    Fn::Equals:
+      - Ref: UseEnvironmentOnHost
+      - 'true'
   #-----------------------
   HasMx:
     Fn::Not:
@@ -552,12 +561,30 @@ Resources:
     Type: AWS::CertificateManager::Certificate
     Properties:
       DomainName:
-        Ref: Domain
+        Fn::If:
+          - ShouldUseEnvironmentOnHost
+          - Fn::Join:
+              - '.'
+              - - Ref: Environment
+                - Ref: Domain
+          - Ref: Domain
       DomainValidationOptions:
         - DomainName:
-            Ref: Domain
+            Fn::If:
+              - ShouldUseEnvironmentOnHost
+              - Fn::Join:
+                  - '.'
+                  - - Ref: Environment
+                    - Ref: Domain
+              - Ref: Domain
           ValidationDomain:
-            Ref: Domain
+            Fn::If:
+              - ShouldUseEnvironmentOnHost
+              - Fn::Join:
+                  - '.'
+                  - - Ref: Environment
+                    - Ref: Domain
+              - Ref: Domain
   #-----------------------
   CertificateDistribution:
     Condition: CreateHTTPSThings
@@ -595,7 +622,13 @@ Resources:
       HostedZoneConfig:
         Comment: "Hosted zone publico"
       Name:
-        Ref: Domain
+        Fn::If:
+          - ShouldUseEnvironmentOnHost
+          - Fn::Join:
+            - '.'
+            - - Ref: Environment
+              - Ref: Domain
+          - Ref: Domain
       HostedZoneTags:
         - Key: "Environment"
           Value:
@@ -607,10 +640,17 @@ Resources:
       HostedZoneConfig:
         Comment: "Hosted zone privado"
       Name:
-        Fn::Join:
-          - '.'
-          - - 'internal'
-            - Ref: Domain
+        Fn::If:
+          - ShouldUseEnvironmentOnHost
+          - Fn::Join:
+            - '.'
+            - - Ref: Environment
+              - 'internal'
+              - Ref: Domain
+          - Fn::Join:
+            - '.'
+            - - 'internal'
+              - Ref: Domain
       VPCs:
         - VPCId:
             Ref: Vpc
@@ -629,11 +669,17 @@ Resources:
         Ref: DNSPublico
       Comment: "DNS publico para uso das applications"
       Name:
-        Fn::Join:
-          - '.'
-          - - 'alb'
-            - Ref: Environment
-            - Ref: Domain
+        Fn::If:
+          - ShouldUseEnvironmentOnHost
+          - Fn::Join:
+            - '.'
+            - - 'alb'
+              - Ref: Environment
+              - Ref: Domain
+          - Fn::Join:
+            - '.'
+            - - 'alb'
+              - Ref: Domain
       Type: "A"
       AliasTarget:
         DNSName:
@@ -654,12 +700,19 @@ Resources:
         Ref: DNSPrivado
       Comment: "DNS privado para uso das applications"
       Name:
-        Fn::Join:
-          - '.'
-          - - 'alb'
-            - Ref: Environment
-            - 'internal'
-            - Ref: Domain
+        Fn::If:
+          - ShouldUseEnvironmentOnHost
+          - Fn::Join:
+            - '.'
+            - - 'alb'
+              - Ref: Environment
+              - 'internal'
+              - Ref: Domain
+          - Fn::Join:
+            - '.'
+            - - 'alb'
+              - 'internal'
+              - Ref: Domain
       Type: "A"
       AliasTarget:
         DNSName:
@@ -680,7 +733,13 @@ Resources:
         Ref: DNSPublico
       Comment: "Email MX configuration"
       Name:
-        Ref: Domain
+        Fn::If:
+          - ShouldUseEnvironmentOnHost
+          - Fn::Join:
+              - '.'
+              - - Ref: Environment
+                - Ref: Domain
+          - Ref: Domain
       Type: "MX"
       TTL: '900'
       ResourceRecords:
@@ -723,4 +782,10 @@ Outputs:
   Domain:
     Description: Environment domain
     Value:
-      Ref: Domain
+      Fn::If:
+        - ShouldUseEnvironmentOnHost
+        - Fn::Join:
+            - '.'
+            - - Ref: Environment
+              - Ref: Domain
+        - Ref: Domain

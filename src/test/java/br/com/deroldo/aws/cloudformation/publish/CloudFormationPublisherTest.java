@@ -92,7 +92,7 @@ public class CloudFormationPublisherTest {
             this.publisher.publish(new YmlData(AWS_YML, Collections.emptyList()));
             fail("Must throw RuntimeException when AWS_REGION is not provided");
         } catch (RuntimeException e) {
-            assertTrue(e.getMessage().contains("The AWS_REGION must be provided"));
+            assertTrue(e.getMessage().contains("To publish, the AWS_REGION must be provided"));
         }
     }
 
@@ -315,7 +315,7 @@ public class CloudFormationPublisherTest {
 
         doReturn(describeResult).when(this.cloudFormation).describeStacks(any());
 
-        String output = this.publisher.getOutput(new AwsValueToGet("Output::stack::out"));
+        String output = this.publisher.getOutput(new AwsValueToGet("Output::stack::out"), false);
         assertEquals("foo", output);
     }
 
@@ -333,7 +333,7 @@ public class CloudFormationPublisherTest {
         doReturn(describeResult).when(this.cloudFormation).describeStacks(any());
 
         try {
-            this.publisher.getOutput(new AwsValueToGet("Output::stack::out"));
+            this.publisher.getOutput(new AwsValueToGet("Output::stack::out"), false);
             fail("Must throw RuntimeException when output key is not found");
         } catch (RuntimeException e) {
             assertTrue(e.getMessage().contains("out"));
@@ -352,7 +352,7 @@ public class CloudFormationPublisherTest {
         doReturn(describeResult).when(this.cloudFormation).describeStacks(any());
 
         try {
-            this.publisher.getOutput(new AwsValueToGet("Output::stack::out"));
+            this.publisher.getOutput(new AwsValueToGet("Output::stack::out"), false);
             fail("Must throw RuntimeException when output key is not found");
         } catch (RuntimeException e) {
             assertTrue(e.getMessage().contains("out"));
@@ -361,7 +361,7 @@ public class CloudFormationPublisherTest {
     }
 
     @Test
-    public void getResourceId_should_return_physical_reource_id(){
+    public void getResourceId_should_return_physical_resource_id(){
         StackResourceDetail detail = mock(StackResourceDetail.class);
         doReturn("foo").when(detail).getPhysicalResourceId();
 
@@ -370,7 +370,7 @@ public class CloudFormationPublisherTest {
 
         doReturn(describeResult).when(this.cloudFormation).describeStackResource(any());
 
-        String resourceId = this.publisher.getResourceId(new AwsValueToGet("Output::stack::out"));
+        String resourceId = this.publisher.getResourceId(new AwsValueToGet("Output::stack::out"), false);
         assertEquals("foo", resourceId);
     }
 
@@ -378,7 +378,27 @@ public class CloudFormationPublisherTest {
     public void getResourceId_should_throw_exception_when_aws_throws_too(){
         doThrow(RuntimeException.class).when(this.cloudFormation).describeStackResource(any());
 
-        this.publisher.getResourceId(new AwsValueToGet("Output::stack::out"));
+        this.publisher.getResourceId(new AwsValueToGet("Output::stack::out"), false);
+    }
+
+    @Test
+    public void getResourceId_should_throw_exception_when_there_is_not_region() throws Exception {
+        System.clearProperty("AWS_REGION");
+        try {
+            StackResourceDetail detail = mock(StackResourceDetail.class);
+            doReturn("foo").when(detail).getPhysicalResourceId();
+
+            DescribeStackResourceResult describeResult = mock(DescribeStackResourceResult.class);
+            doReturn(detail).when(describeResult).getStackResourceDetail();
+
+            doReturn(describeResult).when(this.cloudFormation).describeStackResource(any());
+
+            String resourceId = this.publisher.getResourceId(new AwsValueToGet("Output::stack::out"), false);
+            assertEquals("foo", resourceId);
+            fail("Must throw RuntimeException when AWS_REGION is not provided");
+        } catch (RuntimeException e) {
+            assertTrue(e.getMessage().contains("The AWS_REGION must be provided to complete this template"));
+        }
     }
 
     private void changeDelay() throws NoSuchFieldException, IllegalAccessException {

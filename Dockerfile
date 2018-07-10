@@ -6,6 +6,7 @@ ADD build/libs/*.jar $APP_HOME/app.jar
 
 CMD	java -jar \
     -DUSER_DATA=$USER_DATA \
+    -DGIT_HASH=$GIT_HASH \
     -DAWS_FILE=$AWS_FILE \
     -DAWS_PUBLISH=$AWS_PUBLISH \
     -DAWS_REGION=$AWS_REGION \

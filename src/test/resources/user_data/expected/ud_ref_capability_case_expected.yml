@@ -458,6 +458,7 @@ Resources:
         Fn::Join:
         - "."
         - - "alb"
+          - "my-env"
           - "test.com"
       Type: "A"
       AliasTarget:
@@ -481,6 +482,7 @@ Resources:
         Fn::Join:
         - "."
         - - "alb"
+          - "my-env"
           - "internal"
           - "test.com"
       Type: "A"

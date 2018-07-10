@@ -644,8 +644,8 @@ Resources:
           - ShouldUseEnvironmentOnHost
           - Fn::Join:
             - '.'
-            - - Ref: Environment
-              - 'internal'
+            - - 'internal'
+              - Ref: Environment
               - Ref: Domain
           - Fn::Join:
             - '.'
@@ -705,8 +705,8 @@ Resources:
           - Fn::Join:
             - '.'
             - - 'alb'
-              - Ref: Environment
               - 'internal'
+              - Ref: Environment
               - Ref: Domain
           - Fn::Join:
             - '.'

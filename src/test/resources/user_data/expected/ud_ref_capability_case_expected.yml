@@ -467,8 +467,8 @@ Resources:
         - "ShouldUseEnvironmentOnHost1"
         - Fn::Join:
           - "."
-          - - "my-env"
-            - "internal"
+          - - "internal"
+            - "my-env"
             - "test.com"
         - Fn::Join:
           - "."
@@ -525,8 +525,8 @@ Resources:
         - Fn::Join:
           - "."
           - - "alb"
-            - "my-env"
             - "internal"
+            - "my-env"
             - "test.com"
         - Fn::Join:
           - "."

@@ -5,6 +5,10 @@ Parameters:
   Environment:
     Type: String
   #-----------------------
+  UseEnvironmentOnHost:
+    Type: String
+    Default: 'true'
+  #-----------------------
   ApplicationName:
     Type: String
   #-----------------------
@@ -40,6 +44,16 @@ Parameters:
   DBInstanceClass:
     Type: String
     Default: 'db.t2.micro'
+
+
+#-----------------------
+#-----------------------
+Conditions:
+  #-----------------------
+  ShouldUseEnvironmentOnHost:
+    Fn::Equals:
+      - Ref: UseEnvironmentOnHost
+      - 'true'
 
 
 #-----------------------
@@ -93,7 +107,6 @@ Resources:
         Fn::Join:
           - "."
           - - 'database'
-            - Ref: Environment
             - Ref: ApplicationName
             - 'internal'
             - Ref: Domain

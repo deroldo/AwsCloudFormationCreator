@@ -79,7 +79,7 @@ public class CloudFormationPublisher {
         String stackName = Optional.ofNullable(System.getProperty("STACK_NAME")).orElseThrow(() -> new RuntimeException("The STACK_NAME must be provided"));
 
         out.println("===========================================");
-        out.println("Getting Started with AWS CloudFormation");
+        out.println("Starting publish your template");
         out.println("===========================================\n");
 
         DescribeStacksRequest describer = new DescribeStacksRequest();

@@ -51,6 +51,7 @@ public class InterpreterUserData {
 
         List<Capability> capabilities = new ArrayList<>();
         for (String userResourceName : userDataResources) {
+            System.out.println("Processing " + userResourceName + "...");
             TemplateCapability templateCapability = findAndReplace(userDataObject, awsJsonObject, globalParams, userResourceName, publisher);
             if (!TemplateCapability.DEFAULT.equals(templateCapability)){
                 capabilities.add(templateCapability.getCapability());
@@ -59,6 +60,8 @@ public class InterpreterUserData {
 
         validateIfThereIsRefNotReplaced(awsJsonObject);
         removeEmptyAttribute(awsJsonObject);
+
+        System.out.println("\nTemplate process done!\n");
 
         return new YmlData(getAwsYml(awsJsonObject), capabilities);
     }

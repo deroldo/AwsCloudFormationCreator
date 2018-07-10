@@ -57,7 +57,9 @@ MyCluster:
 
 Now, create an ECR repository:
 ```bash
-//TODO
+Repository:
+  Template: Ecr
+  Name: my-application-name
 ```
 You will need push your docker image to the ECR repository. See more <a href='https://docs.aws.amazon.com/AmazonECR/latest/userguide/docker-push-ecr-image.html'>here</a>
 

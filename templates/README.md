@@ -68,26 +68,26 @@ So, deploy your application on the cluster:
 GlobalParameters:
   Environment: development
   ApplicationName: MyApp
-  Domain: Output::STACK_NAME::Domain1
+  Domain: Output::STACK_NAME::MyCluster-Domain
 
 MyApp:
   Template: Ec2RunningOnClusterEcs
   ApiContainerPort: 80
   ApplicationImage: 111111111111.dkr.ecr.my-region.amazonaws.com/my-image:latest
-  VpcArn: ResourceId::STACK_NAME::Vpc1
-  HttpListenerArn: ResourceId::STACK_NAME::HttpListener1
+  VpcArn: ResourceId::STACK_NAME::MyCluster-Vpc
+  HttpListenerArn: ResourceId::STACK_NAME::MyCluster-HttpListener
   ListenerPriority: 1 # That can't be equal the priority number of another container
   ListenerPath: /my-app
 
 MyRds:
   Template: Rds
-  VpcArn: ResourceId::STACK_NAME::Vpc1
-  DBParameterGroupName: ResourceId::STACK_NAME::MysqlParameterGroup1
+  VpcArn: ResourceId::STACK_NAME::MyCluster-Vpc
+  DBParameterGroupName: ResourceId::STACK_NAME::MyCluster-MysqlParameterGroup
   DBMasterUsername: my-username
   DBMasterUserPassword: my-password
-  DNSPrivado: ResourceId::STACK_NAME::DNSPrivado1
-  DBSubnet: ResourceId::STACK_NAME::DBSubnet1
-  DBSecurityGroups: ResourceId::STACK_NAME::SgDefault1
+  DNSPrivado: ResourceId::STACK_NAME::MyCluster-DNSPrivado
+  DBSubnet: ResourceId::STACK_NAME::MyCluster-DBSubnet
+  DBSecurityGroups: ResourceId::STACK_NAME::MyCluster-SgDefault
 ```
 
 ## Tip

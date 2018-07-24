@@ -6,8 +6,10 @@ import br.com.deroldo.aws.cloudformation.publish.TemplateCapability;
 import br.com.deroldo.aws.cloudformation.replace.AttributeIndexAppender;
 import br.com.deroldo.aws.cloudformation.replace.JsonType;
 import com.amazonaws.services.cloudformation.model.Capability;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -128,21 +130,9 @@ public class InterpreterUserData {
     }
 
     private Set<String> getAllUserResources(JsonObject json) {
-        List<String> allUserResources = json.entrySet().stream()
-                .map(Map.Entry::getKey)
+        return json.keySet().stream()
                 .filter(key -> !key.equals(GLOBAL_PARAMETERS))
-                .collect(Collectors.toList());
-
-        Set<String> userResources = new HashSet<>(allUserResources);
-
-        if (allUserResources.size() != userResources.size()) {
-            Set<String> duplicatedResources = userResources.stream()
-                    .filter(uniqueResource -> allUserResources.stream().filter(resource -> resource.equals(uniqueResource)).count() > 1)
-                    .collect(Collectors.toSet());
-            throw new RuntimeException(format("Non unique resources: %s", duplicatedResources));
-        }
-
-        return userResources;
+                .collect(Collectors.toSet());
     }
 
     private Set<String> getGlobalParameters(JsonObject json) {
@@ -211,6 +201,7 @@ public class InterpreterUserData {
     }
 
     private static JsonObject getJsonObject(InputStream file) throws IOException {
+        YML_MAPPER.configure(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY, true);
         JsonNode userData = YML_MAPPER.readValue(file, JsonNode.class);
         final String userDataJson = JSON_MAPPER.writeValueAsString(userData);
         final String replacedUserDataJson = Optional.ofNullable(System.getProperty("GIT_HASH")).map(gitHash -> userDataJson.replace("${gitHash}", gitHash)).orElse(userDataJson);

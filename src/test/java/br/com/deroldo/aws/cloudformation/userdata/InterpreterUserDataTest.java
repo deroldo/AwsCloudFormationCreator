@@ -5,6 +5,7 @@ import br.com.deroldo.aws.cloudformation.replace.AttributeIndexAppender;
 import com.amazonaws.services.cloudformation.model.Capability;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -192,8 +193,8 @@ public class InterpreterUserDataTest {
         try {
             new InterpreterUserData(getInputStream("user_data/ud_ref_non_unique_resource.yml")).interpretAndGetYmlData(null);
             fail("RuntimeException must be throw when duplicated resource name is present");
-        } catch (RuntimeException e){
-            assertTrue(e.getMessage().equals("Non unique resources: [MyData]"));
+        } catch (MismatchedInputException e){
+            assertTrue(e.getMessage().startsWith("Duplicate field 'MyData'"));
         }
     }
 

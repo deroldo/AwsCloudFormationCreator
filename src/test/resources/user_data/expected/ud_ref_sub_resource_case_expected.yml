@@ -1,10 +1,10 @@
 ---
 Resources:
-  AnyResource1:
+  MyData-AnyResource:
     Type: "AnyAwsType"
     Properties:
-      Foo: "foo=bar, other=${Other1}"
-  Other1:
+      Foo: "foo=bar, other=${MyData-Other}"
+  MyData-Other:
     Type: "AnyAwsType"
     Properties:
       Foo: "baaaar"

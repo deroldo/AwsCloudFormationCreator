@@ -41,6 +41,7 @@ public class InterpreterUserData {
     private InputStream file;
 
     public InterpreterUserData(InputStream file) {
+        YML_MAPPER.configure(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY, true);
         this.file = file;
     }
 
@@ -80,7 +81,7 @@ public class InterpreterUserData {
         findAndReplaceToGlobalParam(userDataObject, globalParams, template, parameters, publisher);
         findAndReplaceToDefaultParam(template, parameters, publisher);
 
-        AttributeIndexAppender.appendIndexOnMainAttributesName(MAIN_ATTRS, awsJsonObject, template);
+        AttributeIndexAppender.appendIndexOnMainAttributesName(MAIN_ATTRS, awsJsonObject, template, userResourceName);
 
         return TemplateCapability.get(templateName);
     }
@@ -201,7 +202,6 @@ public class InterpreterUserData {
     }
 
     private static JsonObject getJsonObject(InputStream file) throws IOException {
-        YML_MAPPER.configure(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY, true);
         JsonNode userData = YML_MAPPER.readValue(file, JsonNode.class);
         final String userDataJson = JSON_MAPPER.writeValueAsString(userData);
         final String replacedUserDataJson = Optional.ofNullable(System.getProperty("GIT_HASH")).map(gitHash -> userDataJson.replace("${gitHash}", gitHash)).orElse(userDataJson);

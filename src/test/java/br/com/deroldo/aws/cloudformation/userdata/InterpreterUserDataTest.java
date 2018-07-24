@@ -1,39 +1,25 @@
 package br.com.deroldo.aws.cloudformation.userdata;
 
-import br.com.deroldo.aws.cloudformation.publish.CloudFormationPublisher;
-import br.com.deroldo.aws.cloudformation.replace.AttributeIndexAppender;
-import com.amazonaws.services.cloudformation.model.Capability;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.exc.MismatchedInputException;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import org.junit.Before;
-import org.junit.Test;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import static java.util.Objects.requireNonNull;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 
-public class InterpreterUserDataTest {
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
-    @Before
-    public void setUp() throws NoSuchFieldException, IllegalAccessException {
-        resetAtomicInteger();
-    }
+import br.com.deroldo.aws.cloudformation.publish.CloudFormationPublisher;
+import com.amazonaws.services.cloudformation.model.Capability;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
+import org.junit.Test;
+
+public class InterpreterUserDataTest {
 
     @Test
     public void interpret_simple_case() throws IOException {
@@ -215,15 +201,6 @@ public class InterpreterUserDataTest {
     private String getFileContent(String fileName) throws IOException {
         return Files.readAllLines(Paths.get(requireNonNull(InterpreterUserData.class.getClassLoader().getResource(fileName)).getPath()))
                 .stream().reduce((s1, s2) -> s1.concat("\n").concat(s2)).get();
-    }
-
-    private void resetAtomicInteger() throws NoSuchFieldException, IllegalAccessException {
-        Field atomicInteger = AttributeIndexAppender.class.getDeclaredField("ATOMIC_INTEGER");
-        atomicInteger.setAccessible(true);
-        Field modifiersField = Field.class.getDeclaredField("modifiers");
-        modifiersField.setAccessible(true);
-        modifiersField.setInt(atomicInteger, atomicInteger.getModifiers() & ~Modifier.FINAL);
-        atomicInteger.set(null, new AtomicInteger());
     }
 
 }

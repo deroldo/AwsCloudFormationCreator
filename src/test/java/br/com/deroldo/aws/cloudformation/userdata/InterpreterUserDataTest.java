@@ -3,6 +3,11 @@ package br.com.deroldo.aws.cloudformation.userdata;
 import br.com.deroldo.aws.cloudformation.publish.CloudFormationPublisher;
 import br.com.deroldo.aws.cloudformation.replace.AttributeIndexAppender;
 import com.amazonaws.services.cloudformation.model.Capability;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -12,6 +17,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.util.Objects.requireNonNull;
@@ -179,6 +185,16 @@ public class InterpreterUserDataTest {
         assertEquals(expectedYml, ymlData.getAwsYml());
         assertEquals(1, ymlData.getCapabilities().size());
         assertEquals(Capability.CAPABILITY_NAMED_IAM, ymlData.getCapabilities().get(0));
+    }
+
+    @Test
+    public void interpret_non_unique_resource_name() throws IOException {
+        try {
+            new InterpreterUserData(getInputStream("user_data/ud_ref_non_unique_resource.yml")).interpretAndGetYmlData(null);
+            fail("RuntimeException must be throw when duplicated resource name is present");
+        } catch (RuntimeException e){
+            assertTrue(e.getMessage().equals("Non unique resources: [MyData]"));
+        }
     }
 
     @Test

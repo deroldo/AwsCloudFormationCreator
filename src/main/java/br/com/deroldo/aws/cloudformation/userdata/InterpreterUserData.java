@@ -128,8 +128,21 @@ public class InterpreterUserData {
     }
 
     private Set<String> getAllUserResources(JsonObject json) {
-        return json.keySet().stream()
-                .filter(key -> !key.equals(GLOBAL_PARAMETERS)).collect(Collectors.toSet());
+        List<String> allUserResources = json.entrySet().stream()
+                .map(Map.Entry::getKey)
+                .filter(key -> !key.equals(GLOBAL_PARAMETERS))
+                .collect(Collectors.toList());
+
+        Set<String> userResources = new HashSet<>(allUserResources);
+
+        if (allUserResources.size() != userResources.size()) {
+            Set<String> duplicatedResources = userResources.stream()
+                    .filter(uniqueResource -> allUserResources.stream().filter(resource -> resource.equals(uniqueResource)).count() > 1)
+                    .collect(Collectors.toSet());
+            throw new RuntimeException(format("Non unique resources: %s", duplicatedResources));
+        }
+
+        return userResources;
     }
 
     private Set<String> getGlobalParameters(JsonObject json) {

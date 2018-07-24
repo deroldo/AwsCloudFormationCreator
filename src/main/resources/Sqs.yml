@@ -11,6 +11,10 @@ Parameters:
   SnsTopicArn:
     Type: String
     Default: 'none'
+  #-----------------------
+  SnsTopic:
+    Type: String
+    Default: 'none'
 
 
 #-----------------------
@@ -28,7 +32,7 @@ Resources:
   #-----------------------
   SnsSubscription:
     Type: "AWS::SNS::Subscription"
-    Condition: ThereIsSnsTopicArn
+    Condition: UsingTopic
     Properties:
       Endpoint:
         Fn::GetAtt:
@@ -36,7 +40,11 @@ Resources:
           - 'Arn'
       Protocol: sqs
       TopicArn:
-        Ref: SnsTopicArn
+        Fn::If:
+          - ThereIsSnsTopicArn
+          - Ref: SnsTopicArn
+          - Ref:
+             Ref: SnsTopic
 
 #-----------------------
 #-----------------------
@@ -47,3 +55,14 @@ Conditions:
       - Fn::Equals:
           - Ref: SnsTopicArn
           - 'none'
+  #-----------------------
+  ThereIsSnsTopic:
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: SnsTopic
+          - 'none'
+  #-----------------------
+  UsingTopic:
+    Fn::Or:
+      - Condition: ThereIsSnsTopicArn
+      - Condition: ThereIsSnsTopic

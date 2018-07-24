@@ -39,7 +39,7 @@ public class ReplaceDataFactory {
         return templateAttr.equals("Fn::Sub") && templateAttrValue.getAsString().contains("${".concat(userResourceParamName).concat("}"));
     }
 
-    private static JsonElement getJsonPrimitive (JsonElement userResourceParamValue, JsonType jsonType, CloudFormationPublisher publisher) {
+    public static JsonElement getJsonPrimitive (JsonElement userResourceParamValue, JsonType jsonType, CloudFormationPublisher publisher) {
         if (JsonType.NUMBER.equals(jsonType)) {
             return new JsonPrimitive(userResourceParamValue.getAsNumber());
         } else if (JsonType.COMMA_DELIMITED_LIST.equals(jsonType)){

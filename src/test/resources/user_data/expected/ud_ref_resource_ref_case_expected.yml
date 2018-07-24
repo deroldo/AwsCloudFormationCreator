@@ -1,40 +1,40 @@
 ---
 Resources:
-  MyData-AnyResource:
+  MyDataAnyResource:
     Type: "AnyAwsType"
     Properties:
       Foo: "bar"
-  MyData-OtherResource:
+  MyDataOtherResource:
     Type: "AnyAwsType"
-    Condition: "MyData-AnyCondition"
-    DependsOn: "MyData-AnyResource"
+    Condition: "MyDataAnyCondition"
+    DependsOn: "MyDataAnyResource"
     Properties:
       Foo:
-        Ref: "MyData-AnyResource"
+        Ref: "MyDataAnyResource"
       Any:
         Fn::If:
-        - "MyData-AnyCondition"
+        - "MyDataAnyCondition"
         - "bar"
         - "any2"
       Other:
         Fn::GetAtt:
-        - "MyData-AnyResource"
+        - "MyDataAnyResource"
         - "AnyThing"
       AnotherMap:
         Fn::FindInMap:
-        - "MyData-anotherMap"
+        - "MyDataanotherMap"
         - "anotherMap"
         - "anotherMap"
       Map: "foobar"
 Mappings:
-  MyData-fooMap:
+  MyDatafooMap:
     fooMap:
       fooMap:
         Foo: "test"
-  MyData-anotherMap:
+  MyDataanotherMap:
     anotherMap:
       anotherMap:
         Foo: "test"
 Conditions:
-  MyData-AnyCondition: true
+  MyDataAnyCondition: true
 

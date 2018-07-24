@@ -1,0 +1,22 @@
+#-----------------------
+#-----------------------
+Parameters:
+  #-----------------------
+  Foo:
+    Type: String
+    Default: foo
+
+
+#-----------------------
+#-----------------------
+Resources:
+  #-----------------------
+  AnyResource:
+    Type: "AnyAwsType"
+    Properties:
+      Foo: foo
+  #-----------------------
+  AnyResource2:
+    Type: "AnyAwsType"
+    Properties:
+      Bar: Bar

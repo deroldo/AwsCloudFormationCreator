@@ -1,11 +1,11 @@
 ---
 Resources:
-  MyData-AnyResource:
+  MyDataAnyResource:
     Type: "AnyAwsType"
     Properties:
       Foo: "bar"
 Mappings:
-  MyData-fooMap:
+  MyDatafooMap:
     fooMap:
       fooMap:
         Foo: "test"

@@ -148,6 +148,13 @@ public class InterpreterUserDataTest {
     }
 
     @Test
+    public void interpret_inside_ref_case() throws IOException {
+        YmlData ymlData = new InterpreterUserData(getInputStream("user_data/ud_ref_inside_ref_case.yml")).interpretAndGetYmlData(null);
+        String expectedYml = getFileContent("user_data/expected/ud_ref_inside_ref_expected_case.yml");
+        assertEquals(expectedYml, ymlData.getAwsYml());
+    }
+
+    @Test
     public void interpret_get_resource_id_case() throws IOException {
         CloudFormationPublisher publisher = mock(CloudFormationPublisher.class);
         doReturn("bar").when(publisher).getResourceId(any(), anyBoolean());
@@ -181,6 +188,16 @@ public class InterpreterUserDataTest {
             fail("RuntimeException must be throw when duplicated resource name is present");
         } catch (MismatchedInputException e){
             assertTrue(e.getMessage().startsWith("Duplicate field 'MyData'"));
+        }
+    }
+
+    @Test
+    public void interpret_inside_ref_case_when_is_non_unique_resource_on_template() throws IOException {
+        try {
+            new InterpreterUserData(getInputStream("user_data/ud_ref_inside_ref_case_when_is_non_unique_resource_on_template_resource.yml")).interpretAndGetYmlData(null);
+            fail("RuntimeException must be throw when resource is not unique on template");
+        } catch (RuntimeException e){
+            assertTrue(e.getMessage().equals("Is not possible to reference a resource from non unique resource template"));
         }
     }
 

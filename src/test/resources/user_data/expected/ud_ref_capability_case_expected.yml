@@ -1,6 +1,6 @@
 ---
 Resources:
-  MyApp-Vpc:
+  MyAppVpc:
     Type: "AWS::EC2::VPC"
     Properties:
       EnableDnsSupport: "true"
@@ -13,7 +13,7 @@ Resources:
           - - "my-env"
             - "VPC"
       CidrBlock: "10.1.0.0/16"
-  MyApp-EcsInstanceRole:
+  MyAppEcsInstanceRole:
     Type: "AWS::IAM::Role"
     Properties:
       RoleName:
@@ -33,7 +33,7 @@ Resources:
       - "arn:aws:iam::aws:policy/AmazonRDSFullAccess"
       - "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
       - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
-  MyApp-SSHLocalRolePolicy:
+  MyAppSSHLocalRolePolicy:
     Type: "AWS::IAM::Policy"
     Properties:
       PolicyName:
@@ -59,8 +59,8 @@ Resources:
           Action: "ec2:DescribeTags"
           Resource: "*"
       Roles:
-      - Ref: "MyApp-EcsInstanceRole"
-  MyApp-EcsInstanceProfile:
+      - Ref: "MyAppEcsInstanceRole"
+  MyAppEcsInstanceProfile:
     Type: "AWS::IAM::InstanceProfile"
     Properties:
       InstanceProfileName:
@@ -69,16 +69,16 @@ Resources:
         - - "my-env"
           - "EcsProfile"
       Roles:
-      - Ref: "MyApp-EcsInstanceRole"
-  MyApp-EcsCluster:
+      - Ref: "MyAppEcsInstanceRole"
+  MyAppEcsCluster:
     Type: "AWS::ECS::Cluster"
     Properties:
       ClusterName: "my-env"
-  MyApp-PubSubnetAz1:
+  MyAppPubSubnetAz1:
     Type: "AWS::EC2::Subnet"
     Properties:
       VpcId:
-        Ref: "MyApp-Vpc"
+        Ref: "MyAppVpc"
       AvailabilityZone:
         Fn::Select:
         - 0
@@ -86,11 +86,11 @@ Resources:
           - "us-east-1c"
       MapPublicIpOnLaunch: true
       CidrBlock: "10.1.0.0/24"
-  MyApp-PrivSubnetAz2:
+  MyAppPrivSubnetAz2:
     Type: "AWS::EC2::Subnet"
     Properties:
       VpcId:
-        Ref: "MyApp-Vpc"
+        Ref: "MyAppVpc"
       AvailabilityZone:
         Fn::Select:
         - 0
@@ -98,11 +98,11 @@ Resources:
           - "us-east-1c"
       MapPublicIpOnLaunch: false
       CidrBlock: "10.1.1.0/24"
-  MyApp-PubSubnetAz3:
+  MyAppPubSubnetAz3:
     Type: "AWS::EC2::Subnet"
     Properties:
       VpcId:
-        Ref: "MyApp-Vpc"
+        Ref: "MyAppVpc"
       AvailabilityZone:
         Fn::Select:
         - 1
@@ -110,11 +110,11 @@ Resources:
           - "us-east-1c"
       MapPublicIpOnLaunch: true
       CidrBlock: "10.1.2.0/24"
-  MyApp-PrivSubnetAz4:
+  MyAppPrivSubnetAz4:
     Type: "AWS::EC2::Subnet"
     Properties:
       VpcId:
-        Ref: "MyApp-Vpc"
+        Ref: "MyAppVpc"
       AvailabilityZone:
         Fn::Select:
         - 1
@@ -122,77 +122,77 @@ Resources:
           - "us-east-1c"
       MapPublicIpOnLaunch: false
       CidrBlock: "10.1.3.0/24"
-  MyApp-InternetGateway:
+  MyAppInternetGateway:
     Type: "AWS::EC2::InternetGateway"
-  MyApp-AttachGateway:
+  MyAppAttachGateway:
     Type: "AWS::EC2::VPCGatewayAttachment"
     Properties:
       VpcId:
-        Ref: "MyApp-Vpc"
+        Ref: "MyAppVpc"
       InternetGatewayId:
-        Ref: "MyApp-InternetGateway"
-  MyApp-RouteViaIgw:
+        Ref: "MyAppInternetGateway"
+  MyAppRouteViaIgw:
     Type: "AWS::EC2::RouteTable"
     Properties:
       VpcId:
-        Ref: "MyApp-Vpc"
-  MyApp-PublicRouteViaIgw:
+        Ref: "MyAppVpc"
+  MyAppPublicRouteViaIgw:
     Type: "AWS::EC2::Route"
-    DependsOn: "MyApp-AttachGateway"
+    DependsOn: "MyAppAttachGateway"
     Properties:
       RouteTableId:
-        Ref: "MyApp-RouteViaIgw"
+        Ref: "MyAppRouteViaIgw"
       DestinationCidrBlock: "0.0.0.0/0"
       GatewayId:
-        Ref: "MyApp-InternetGateway"
-  MyApp-PubSubnet1RouteTableAssociation:
+        Ref: "MyAppInternetGateway"
+  MyAppPubSubnet1RouteTableAssociation:
     Type: "AWS::EC2::SubnetRouteTableAssociation"
     Properties:
       SubnetId:
-        Ref: "MyApp-PubSubnetAz1"
+        Ref: "MyAppPubSubnetAz1"
       RouteTableId:
-        Ref: "MyApp-RouteViaIgw"
-  MyApp-PrivSubnet2RouteTableAssociation:
+        Ref: "MyAppRouteViaIgw"
+  MyAppPrivSubnet2RouteTableAssociation:
     Type: "AWS::EC2::SubnetRouteTableAssociation"
     Properties:
       SubnetId:
-        Ref: "MyApp-PrivSubnetAz2"
+        Ref: "MyAppPrivSubnetAz2"
       RouteTableId:
-        Ref: "MyApp-RouteViaIgw"
-  MyApp-PubSubnet3RouteTableAssociation:
+        Ref: "MyAppRouteViaIgw"
+  MyAppPubSubnet3RouteTableAssociation:
     Type: "AWS::EC2::SubnetRouteTableAssociation"
     Properties:
       SubnetId:
-        Ref: "MyApp-PubSubnetAz3"
+        Ref: "MyAppPubSubnetAz3"
       RouteTableId:
-        Ref: "MyApp-RouteViaIgw"
-  MyApp-PrivSubnet4RouteTableAssociation:
+        Ref: "MyAppRouteViaIgw"
+  MyAppPrivSubnet4RouteTableAssociation:
     Type: "AWS::EC2::SubnetRouteTableAssociation"
     Properties:
       SubnetId:
-        Ref: "MyApp-PrivSubnetAz4"
+        Ref: "MyAppPrivSubnetAz4"
       RouteTableId:
-        Ref: "MyApp-RouteViaIgw"
-  MyApp-EcsInstanceLc:
+        Ref: "MyAppRouteViaIgw"
+  MyAppEcsInstanceLc:
     Type: "AWS::AutoScaling::LaunchConfiguration"
     Properties:
       AssociatePublicIpAddress: true
       IamInstanceProfile:
-        Ref: "MyApp-EcsInstanceProfile"
+        Ref: "MyAppEcsInstanceProfile"
       KeyName:
         Fn::If:
-        - "MyApp-CreateEC2LCWithKeyPair"
+        - "MyAppCreateEC2LCWithKeyPair"
         - ""
         - Ref: "AWS::NoValue"
       SecurityGroups:
         Fn::If:
-        - "MyApp-ShouldOpenSSH"
-        - - Ref: "MyApp-SgDefault"
-          - Ref: "MyApp-SgSsh"
-        - - Ref: "MyApp-SgDefault"
+        - "MyAppShouldOpenSSH"
+        - - Ref: "MyAppSgDefault"
+          - Ref: "MyAppSgSsh"
+        - - Ref: "MyAppSgDefault"
       BlockDeviceMappings:
         Fn::If:
-        - "MyApp-CreateEbsVolume"
+        - "MyAppCreateEbsVolume"
         - - DeviceName:
               Fn::Join:
               - "-"
@@ -206,14 +206,14 @@ Resources:
         Fn::Base64: "#!/bin/bash\necho ECS_CLUSTER=my-env >> /etc/ecs/ecs.config\n"
       ImageId: "ami-83af8395"
       InstanceType: "t2.micro"
-  MyApp-EcsInstanceAsg:
+  MyAppEcsInstanceAsg:
     Type: "AWS::AutoScaling::AutoScalingGroup"
     Properties:
       VPCZoneIdentifier:
-      - Fn::Sub: "${MyApp-PubSubnetAz1}, ${MyApp-PrivSubnetAz2}, ${MyApp-PubSubnetAz3},\
-          \ ${MyApp-PrivSubnetAz4}"
+      - Fn::Sub: "${MyAppPubSubnetAz1}, ${MyAppPrivSubnetAz2}, ${MyAppPubSubnetAz3},\
+          \ ${MyAppPrivSubnetAz4}"
       LaunchConfigurationName:
-        Ref: "MyApp-EcsInstanceLc"
+        Ref: "MyAppEcsInstanceLc"
       MinSize: "0"
       Tags:
       - Key: "Name"
@@ -228,7 +228,7 @@ Resources:
         PropagateAtLaunch: "true"
       MaxSize: 1
       DesiredCapacity: 1
-  MyApp-SgDefault:
+  MyAppSgDefault:
     Type: "AWS::EC2::SecurityGroup"
     Properties:
       GroupName:
@@ -238,8 +238,8 @@ Resources:
           - "Default"
       GroupDescription: "Default SecurityGroup"
       VpcId:
-        Ref: "MyApp-Vpc"
-  MyApp-SgHttp:
+        Ref: "MyAppVpc"
+  MyAppSgHttp:
     Type: "AWS::EC2::SecurityGroup"
     Properties:
       GroupName:
@@ -249,8 +249,8 @@ Resources:
           - "HTTP"
       GroupDescription: "SecurityGroup HTTP"
       VpcId:
-        Ref: "MyApp-Vpc"
-  MyApp-SgHttps:
+        Ref: "MyAppVpc"
+  MyAppSgHttps:
     Type: "AWS::EC2::SecurityGroup"
     Properties:
       GroupName:
@@ -260,9 +260,9 @@ Resources:
           - "HTTPS"
       GroupDescription: "SecurityGroup HTTPS"
       VpcId:
-        Ref: "MyApp-Vpc"
-  MyApp-SgSsh:
-    Condition: "MyApp-ShouldOpenSSH"
+        Ref: "MyAppVpc"
+  MyAppSgSsh:
+    Condition: "MyAppShouldOpenSSH"
     Type: "AWS::EC2::SecurityGroup"
     Properties:
       GroupName:
@@ -272,41 +272,41 @@ Resources:
           - "SSH"
       GroupDescription: "SecurityGroup SSH"
       VpcId:
-        Ref: "MyApp-Vpc"
-  MyApp-SgDefaultIngress:
+        Ref: "MyAppVpc"
+  MyAppSgDefaultIngress:
     Type: "AWS::EC2::SecurityGroupIngress"
     Properties:
       GroupId:
-        Ref: "MyApp-SgDefault"
+        Ref: "MyAppSgDefault"
       IpProtocol: "-1"
       FromPort: "-1"
       ToPort: "-1"
       SourceSecurityGroupId:
-        Ref: "MyApp-SgDefault"
-  MyApp-SgHttpIngress:
+        Ref: "MyAppSgDefault"
+  MyAppSgHttpIngress:
     Type: "AWS::EC2::SecurityGroupIngress"
     Properties:
       GroupId:
-        Ref: "MyApp-SgHttp"
+        Ref: "MyAppSgHttp"
       IpProtocol: "tcp"
       FromPort: "80"
       ToPort: "80"
       CidrIp: "0.0.0.0/0"
-  MyApp-SgHttpsIngress:
+  MyAppSgHttpsIngress:
     Type: "AWS::EC2::SecurityGroupIngress"
     Properties:
       GroupId:
-        Ref: "MyApp-SgHttps"
+        Ref: "MyAppSgHttps"
       IpProtocol: "tcp"
       FromPort: "443"
       ToPort: "443"
       CidrIp: "0.0.0.0/0"
-  MyApp-SgSshIngress:
-    Condition: "MyApp-ShouldOpenSSH"
+  MyAppSgSshIngress:
+    Condition: "MyAppShouldOpenSSH"
     Type: "AWS::EC2::SecurityGroupIngress"
     Properties:
       GroupId:
-        Ref: "MyApp-SgSsh"
+        Ref: "MyAppSgSsh"
       IpProtocol: "tcp"
       FromPort: "22"
       ToPort: "22"
@@ -315,7 +315,7 @@ Resources:
         - ""
         - - "192.168.0.1"
           - "/32"
-  MyApp-LoadBalancer:
+  MyAppLoadBalancer:
     Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
     Properties:
       Name:
@@ -325,41 +325,41 @@ Resources:
           - "ALB"
       Scheme: "internet-facing"
       Subnets:
-      - Ref: "MyApp-PubSubnetAz1"
-      - Ref: "MyApp-PubSubnetAz3"
+      - Ref: "MyAppPubSubnetAz1"
+      - Ref: "MyAppPubSubnetAz3"
       LoadBalancerAttributes:
       - Key: "idle_timeout.timeout_seconds"
         Value: "60"
       SecurityGroups:
-      - Ref: "MyApp-SgDefault"
-      - Ref: "MyApp-SgHttp"
-      - Ref: "MyApp-SgHttps"
-  MyApp-HttpListener:
+      - Ref: "MyAppSgDefault"
+      - Ref: "MyAppSgHttp"
+      - Ref: "MyAppSgHttps"
+  MyAppHttpListener:
     Type: "AWS::ElasticLoadBalancingV2::Listener"
     Properties:
       DefaultActions:
       - Type: "forward"
         TargetGroupArn:
-          Ref: "MyApp-TargetGroup"
+          Ref: "MyAppTargetGroup"
       LoadBalancerArn:
-        Ref: "MyApp-LoadBalancer"
+        Ref: "MyAppLoadBalancer"
       Port: "80"
       Protocol: "HTTP"
-  MyApp-HttpsListener:
-    Condition: "MyApp-CreateHTTPSThings"
+  MyAppHttpsListener:
+    Condition: "MyAppCreateHTTPSThings"
     Type: "AWS::ElasticLoadBalancingV2::Listener"
     Properties:
       DefaultActions:
       - Type: "forward"
         TargetGroupArn:
-          Ref: "MyApp-TargetGroup"
+          Ref: "MyAppTargetGroup"
       LoadBalancerArn:
-        Ref: "MyApp-LoadBalancer"
+        Ref: "MyAppLoadBalancer"
       Port: "443"
       Protocol: "HTTPS"
       Certificates:
-      - Ref: "MyApp-CertificateHttp"
-  MyApp-TargetGroup:
+      - Ref: "MyAppCertificateHttp"
+  MyAppTargetGroup:
     Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
     Properties:
       HealthCheckIntervalSeconds: 30
@@ -382,17 +382,17 @@ Resources:
       - Key: "deregistration_delay.timeout_seconds"
         Value: "20"
       VpcId:
-        Ref: "MyApp-Vpc"
+        Ref: "MyAppVpc"
       Tags:
       - Key: "Environment"
         Value: "my-env"
-  MyApp-CertificateHttp:
-    Condition: "MyApp-CreateHTTPSThings"
+  MyAppCertificateHttp:
+    Condition: "MyAppCreateHTTPSThings"
     Type: "AWS::CertificateManager::Certificate"
     Properties:
       DomainName:
         Fn::If:
-        - "MyApp-ShouldUseEnvironmentOnHost"
+        - "MyAppShouldUseEnvironmentOnHost"
         - Fn::Join:
           - "."
           - - "my-env"
@@ -401,7 +401,7 @@ Resources:
       DomainValidationOptions:
       - DomainName:
           Fn::If:
-          - "MyApp-ShouldUseEnvironmentOnHost"
+          - "MyAppShouldUseEnvironmentOnHost"
           - Fn::Join:
             - "."
             - - "my-env"
@@ -409,31 +409,31 @@ Resources:
           - "test.com"
         ValidationDomain:
           Fn::If:
-          - "MyApp-ShouldUseEnvironmentOnHost"
+          - "MyAppShouldUseEnvironmentOnHost"
           - Fn::Join:
             - "."
             - - "my-env"
               - "test.com"
           - "test.com"
-  MyApp-CertificateDistribution:
-    Condition: "MyApp-CreateHTTPSThings"
+  MyAppCertificateDistribution:
+    Condition: "MyAppCreateHTTPSThings"
     Type: "AWS::CloudFront::Distribution"
     Properties:
       DistributionConfig:
         ViewerCertificate:
           AcmCertificateArn:
-            Ref: "MyApp-CertificateHttp"
+            Ref: "MyAppCertificateHttp"
           SslSupportMethod: "sni-only"
         Aliases: "test.com"
-  MyApp-DBSubnet:
+  MyAppDBSubnet:
     Type: "AWS::RDS::DBSubnetGroup"
     Properties:
       DBSubnetGroupDescription: "Subnet to database"
       SubnetIds:
-      - Ref: "MyApp-PubSubnetAz1"
-      - Ref: "MyApp-PrivSubnetAz2"
-      - Ref: "MyApp-PubSubnetAz3"
-      - Ref: "MyApp-PrivSubnetAz4"
+      - Ref: "MyAppPubSubnetAz1"
+      - Ref: "MyAppPrivSubnetAz2"
+      - Ref: "MyAppPubSubnetAz3"
+      - Ref: "MyAppPrivSubnetAz4"
       Tags:
       - Key: "Name"
         Value:
@@ -442,14 +442,14 @@ Resources:
           - - "my-env"
             - "DB"
             - "Subnet"
-  MyApp-DNSPublico:
+  MyAppDNSPublico:
     Type: "AWS::Route53::HostedZone"
     Properties:
       HostedZoneConfig:
         Comment: "Hosted zone publico"
       Name:
         Fn::If:
-        - "MyApp-ShouldUseEnvironmentOnHost"
+        - "MyAppShouldUseEnvironmentOnHost"
         - Fn::Join:
           - "."
           - - "my-env"
@@ -458,14 +458,14 @@ Resources:
       HostedZoneTags:
       - Key: "Environment"
         Value: "my-env"
-  MyApp-DNSPrivado:
+  MyAppDNSPrivado:
     Type: "AWS::Route53::HostedZone"
     Properties:
       HostedZoneConfig:
         Comment: "Hosted zone privado"
       Name:
         Fn::If:
-        - "MyApp-ShouldUseEnvironmentOnHost"
+        - "MyAppShouldUseEnvironmentOnHost"
         - Fn::Join:
           - "."
           - - "internal"
@@ -477,22 +477,22 @@ Resources:
             - "test.com"
       VPCs:
       - VPCId:
-          Ref: "MyApp-Vpc"
+          Ref: "MyAppVpc"
         VPCRegion:
           Ref: "AWS::Region"
       HostedZoneTags:
       - Key: "Environment"
         Value: "my-env"
-  MyApp-DNSRecordAlbPublico:
+  MyAppDNSRecordAlbPublico:
     Type: "AWS::Route53::RecordSet"
-    DependsOn: "MyApp-LoadBalancer"
+    DependsOn: "MyAppLoadBalancer"
     Properties:
       HostedZoneId:
-        Ref: "MyApp-DNSPublico"
+        Ref: "MyAppDNSPublico"
       Comment: "DNS publico para uso das applications"
       Name:
         Fn::If:
-        - "MyApp-ShouldUseEnvironmentOnHost"
+        - "MyAppShouldUseEnvironmentOnHost"
         - Fn::Join:
           - "."
           - - "alb"
@@ -506,23 +506,23 @@ Resources:
       AliasTarget:
         DNSName:
           Fn::GetAtt:
-          - "MyApp-LoadBalancer"
+          - "MyAppLoadBalancer"
           - "DNSName"
         EvaluateTargetHealth: false
         HostedZoneId:
           Fn::GetAtt:
-          - "MyApp-LoadBalancer"
+          - "MyAppLoadBalancer"
           - "CanonicalHostedZoneID"
-  MyApp-DNSRecordAlbPrivado:
+  MyAppDNSRecordAlbPrivado:
     Type: "AWS::Route53::RecordSet"
-    DependsOn: "MyApp-LoadBalancer"
+    DependsOn: "MyAppLoadBalancer"
     Properties:
       HostedZoneId:
-        Ref: "MyApp-DNSPrivado"
+        Ref: "MyAppDNSPrivado"
       Comment: "DNS privado para uso das applications"
       Name:
         Fn::If:
-        - "MyApp-ShouldUseEnvironmentOnHost"
+        - "MyAppShouldUseEnvironmentOnHost"
         - Fn::Join:
           - "."
           - - "alb"
@@ -538,23 +538,23 @@ Resources:
       AliasTarget:
         DNSName:
           Fn::GetAtt:
-          - "MyApp-LoadBalancer"
+          - "MyAppLoadBalancer"
           - "DNSName"
         EvaluateTargetHealth: false
         HostedZoneId:
           Fn::GetAtt:
-          - "MyApp-LoadBalancer"
+          - "MyAppLoadBalancer"
           - "CanonicalHostedZoneID"
-  MyApp-Email:
+  MyAppEmail:
     Type: "AWS::Route53::RecordSet"
-    Condition: "MyApp-HasMx"
+    Condition: "MyAppHasMx"
     Properties:
       HostedZoneId:
-        Ref: "MyApp-DNSPublico"
+        Ref: "MyAppDNSPublico"
       Comment: "Email MX configuration"
       Name:
         Fn::If:
-        - "MyApp-ShouldUseEnvironmentOnHost"
+        - "MyAppShouldUseEnvironmentOnHost"
         - Fn::Join:
           - "."
           - - "my-env"
@@ -564,7 +564,7 @@ Resources:
       TTL: "900"
       ResourceRecords:
       - ""
-  MyApp-MysqlParameterGroup:
+  MyAppMysqlParameterGroup:
     Type: "AWS::RDS::DBParameterGroup"
     Properties:
       Description: "CloudFormation Parameter Group for MySql - lower case para mysql,\
@@ -584,34 +584,34 @@ Resources:
       - Key: "Environment"
         Value: "my-env"
 Outputs:
-  MyApp-EcsInstanceAsgName:
+  MyAppEcsInstanceAsgName:
     Description: "Auto Scaling Group Name for ECS Instances"
     Value:
-      Ref: "MyApp-EcsInstanceAsg"
-  MyApp-SecuritiesGroups:
+      Ref: "MyAppEcsInstanceAsg"
+  MyAppSecuritiesGroups:
     Description: "Securities groups"
     Value:
       Fn::If:
-      - "MyApp-ShouldOpenSSH"
+      - "MyAppShouldOpenSSH"
       - "SgDefault,SgHttp,SgHttps,SgSsh"
       - "SgDefault,SgHttp,SgHttps"
-  MyApp-Domain:
+  MyAppDomain:
     Description: "Environment domain"
     Value:
       Fn::If:
-      - "MyApp-ShouldUseEnvironmentOnHost"
+      - "MyAppShouldUseEnvironmentOnHost"
       - Fn::Join:
         - "."
         - - "my-env"
           - "test.com"
       - "test.com"
 Conditions:
-  MyApp-CreateEC2LCWithKeyPair:
+  MyAppCreateEC2LCWithKeyPair:
     Fn::Not:
     - Fn::Equals:
       - ""
       - ""
-  MyApp-CreateEbsVolume:
+  MyAppCreateEbsVolume:
     Fn::And:
     - Fn::Not:
       - Fn::Equals:
@@ -621,20 +621,20 @@ Conditions:
       - Fn::Equals:
         - ""
         - ""
-  MyApp-CreateHTTPSThings:
+  MyAppCreateHTTPSThings:
     Fn::Equals:
     - "false"
     - "true"
-  MyApp-ShouldOpenSSH:
+  MyAppShouldOpenSSH:
     Fn::Not:
     - Fn::Equals:
       - "192.168.0.1"
       - ""
-  MyApp-ShouldUseEnvironmentOnHost:
+  MyAppShouldUseEnvironmentOnHost:
     Fn::Equals:
     - "true"
     - "true"
-  MyApp-HasMx:
+  MyAppHasMx:
     Fn::Not:
     - Fn::Equals:
       - Fn::Join:

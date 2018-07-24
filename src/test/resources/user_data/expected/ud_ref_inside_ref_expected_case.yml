@@ -1,0 +1,12 @@
+---
+Resources:
+  barAnyResource:
+    Type: "AnyAwsType"
+    Properties:
+      Foo: "bar2"
+  MyDataAnyResource:
+    Type: "AnyAwsType"
+    Properties:
+      Foo:
+        Ref: "barAnyResource"
+

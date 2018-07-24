@@ -1,0 +1,7 @@
+MyData:
+  Template: ref_inside_ref_case
+  Foo: bar
+
+bar:
+  Template: ref_simple_case
+  Foo: bar2

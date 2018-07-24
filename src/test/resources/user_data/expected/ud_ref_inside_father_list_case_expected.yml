@@ -1,6 +1,6 @@
 ---
 Resources:
-  MyData-AnyResource:
+  MyDataAnyResource:
     Type: "AnyAwsType"
     Properties:
     - Foo: "bar"

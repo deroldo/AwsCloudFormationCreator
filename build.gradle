@@ -75,21 +75,21 @@ jacocoTestCoverageVerification {
             element = 'CLASS'
             limit {
                 counter = 'LINE'
-                minimum = 0.95
+                minimum = 0.90
             }
         }
         rule {
             element = 'CLASS'
             limit {
                 counter = 'BRANCH'
-                minimum = 0.95
+                minimum = 0.90
             }
         }
         rule {
             element = 'CLASS'
             limit {
                 counter = 'METHOD'
-                minimum = 0.95
+                minimum = 0.90
             }
         }
     }
